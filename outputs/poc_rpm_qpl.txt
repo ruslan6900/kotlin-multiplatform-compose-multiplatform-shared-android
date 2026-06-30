@@ -1,0 +1,11 @@
+/usr/bin/com.example.aurorakmpdemo
+/usr/share/applications/com.example.aurorakmpdemo.desktop
+/usr/share/com.example.aurorakmpdemo/lib/libmaliit-glib.so
+/usr/share/com.example.aurorakmpdemo/lib/libmaliit-glib.so.0
+/usr/share/com.example.aurorakmpdemo/lib/libmaliit-glib.so.0.99
+/usr/share/com.example.aurorakmpdemo/lib/libmaliit-glib.so.0.99.1
+/usr/share/com.example.aurorakmpdemo/resources/values_strings.commonMain.cvr
+/usr/share/icons/hicolor/108x108/apps/com.example.aurorakmpdemo.png
+/usr/share/icons/hicolor/128x128/apps/com.example.aurorakmpdemo.png
+/usr/share/icons/hicolor/172x172/apps/com.example.aurorakmpdemo.png
+/usr/share/icons/hicolor/86x86/apps/com.example.aurorakmpdemo.png

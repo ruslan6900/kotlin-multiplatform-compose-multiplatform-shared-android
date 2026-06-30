@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/work/aurora-build-tools" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/work/aurora-docs" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/work/aurora-maven-partial" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/work/demo-cmp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/work/student-box-cmp" vcs="Git" />
+  </component>
+</project>

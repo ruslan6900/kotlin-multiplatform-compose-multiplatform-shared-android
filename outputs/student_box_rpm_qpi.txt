@@ -1,0 +1,15 @@
+Name        : ru.auroraos.box.cmp.cmp
+Version     : 0.0.1
+Release     : 1
+Architecture: aarch64
+Install Date: (not installed)
+Group       : Unspecified
+Size        : 51905857
+License     : BSD 3-Clause
+Signature   : (none)
+Source RPM  : ru.auroraos.box.cmp.cmp-0.0.1-1.src.rpm
+Build Date  : Mon Jun 22 08:01:47 2026
+Build Host  : 5ea394edd280
+Summary     : Example application Compose Multiplatform.
+Description :
+Example application Compose Multiplatform.

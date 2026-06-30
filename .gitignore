@@ -1,0 +1,13 @@
+.gradle/
+build/
+composeApp/build/
+local.properties
+.kotlin/
+*.iml
+DerivedData/
+.DS_Store
+work/
+outputs/*.log
+outputs/*.png
+outputs/*.jpg
+outputs/*.jpeg

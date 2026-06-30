@@ -1,0 +1,12 @@
+/usr/bin/ru.auroraos.box.cmp.cmp
+/usr/share/applications/ru.auroraos.box.cmp.cmp.desktop
+/usr/share/icons/hicolor/108x108/apps/ru.auroraos.box.cmp.cmp.png
+/usr/share/icons/hicolor/128x128/apps/ru.auroraos.box.cmp.cmp.png
+/usr/share/icons/hicolor/172x172/apps/ru.auroraos.box.cmp.cmp.png
+/usr/share/icons/hicolor/86x86/apps/ru.auroraos.box.cmp.cmp.png
+/usr/share/ru.auroraos.box.cmp.cmp/lib/libmaliit-glib.so
+/usr/share/ru.auroraos.box.cmp.cmp/lib/libmaliit-glib.so.0
+/usr/share/ru.auroraos.box.cmp.cmp/lib/libmaliit-glib.so.0.99
+/usr/share/ru.auroraos.box.cmp.cmp/lib/libmaliit-glib.so.0.99.1
+/usr/share/ru.auroraos.box.cmp.cmp/resources/drawable_main_bg.png
+/usr/share/ru.auroraos.box.cmp.cmp/resources/values_strings.commonMain.cvr

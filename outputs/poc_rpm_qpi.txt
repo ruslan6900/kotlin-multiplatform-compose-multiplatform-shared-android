@@ -1,0 +1,15 @@
+Name        : com.example.aurorakmpdemo
+Version     : 0.0.1
+Release     : 1
+Architecture: aarch64
+Install Date: (not installed)
+Group       : Unspecified
+Size        : 50632867
+License     : BSD 3-Clause
+Signature   : (none)
+Source RPM  : com.example.aurorakmpdemo-0.0.1-1.src.rpm
+Build Date  : Mon Jun 22 08:54:00 2026
+Build Host  : d9747030bfc8
+Summary     : Aurora Kotlin Multiplatform compatibility check.
+Description :
+Aurora Kotlin Multiplatform compatibility check.
