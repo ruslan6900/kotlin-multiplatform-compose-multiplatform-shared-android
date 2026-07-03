@@ -16,15 +16,16 @@
 
 Конфигурации сохранены в проекте по пути:
 
-[`/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/.idea/runConfigurations`](/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/.idea/runConfigurations)
+`.idea/runConfigurations`
 
 Сейчас там находятся:
 
-- `Aurora Build Debug`
-- `Aurora Install Debug To Emulator`
-- `Aurora Kill App On Emulator`
-- `Aurora Run Debug On Emulator`
-- `Aurora Rebuild + Run Cleanly`
+- `Aurora | Build Debug`
+- `Aurora | Install Debug To Emulator`
+- `Aurora | Kill App On Emulator`
+- `Aurora | Run Debug On Emulator`
+- `Aurora | Rebuild + Run Cleanly`
+- `Desktop | Run`
 
 Эти XML-файлы лежат в проекте как shared configuration files, а значит могут быть закоммичены в Git и доступны другим разработчикам после clone/pull.
 
@@ -34,9 +35,64 @@
 - локальный `.idea/workspace.xml` в это не входит;
 - поэтому персональные IDE-состояния не смешиваются с общими проектными конфигами.
 
+Практически это означает следующее:
+
+- Aurora и Desktop конфигурации в проекте являются shared и коммитятся в репозиторий;
+- локальные IDE-конфигурации пользователя могут называться отдельно, например:
+  - `Android | Run`
+  - `IOS | Run`
+- эти локальные Android/iOS-конфигурации живут уже в `.idea/workspace.xml` конкретного пользователя и не считаются общей частью проекта.
+
+## 1.1. Иконки конфигураций
+
+После обновления именования конфигурации теперь визуально различаются прежде всего по имени:
+
+- `Aurora | ...`
+- `Desktop | Run`
+- локальные `Android | Run`
+- локальные `IOS | Run`
+
+При этом важно зафиксировать ограничение Android Studio / IntelliJ:
+
+- иконка в выпадающем списке Run/Debug определяется типом конфигурации IDE;
+- Aurora shared-конфиги у нас реализованы как `GradleRunConfiguration`;
+- поэтому у них отображается стандартная Gradle-иконка, а не отдельная Aurora-иконка.
+
+То есть на текущем этапе:
+
+- переименование и группировка конфигураций поддерживаются;
+- подмена иконки для обычного Gradle run-config через project XML не поддерживается;
+- для своей иконки Aurora понадобился бы отдельный IntelliJ / Android Studio plugin с собственным `ConfigurationType`.
+
+## 1.2. Что нужно настроить на новой машине
+
+Сами run-конфигурации уже portable, потому что используют `$PROJECT_DIR$`, а не абсолютные пути к конкретной машине.
+
+Для запуска на новой машине нужно только обеспечить toolchain:
+
+- Android:
+  - либо `sdk.dir` в `local.properties`
+  - либо `ANDROID_SDK_ROOT` / `ANDROID_HOME`
+  - при желании можно переопределить `adb.path`, `emulator.path`, `android.avd`
+- Aurora:
+  - по умолчанию используются `127.0.0.1`, `2223`, `defaultuser`, `$HOME/AuroraOS/vmshare/ssh/private_keys/sdk`
+  - при необходимости можно переопределить:
+    - `-Paurora.host`
+    - `-Paurora.port`
+    - `-Paurora.user`
+    - `-Paurora.sshKey`
+  - либо те же значения через environment:
+    - `AURORA_HOST`
+    - `AURORA_PORT`
+    - `AURORA_USER`
+    - `AURORA_SSH_KEY`
+- JDK:
+  - при желании можно задать `MAIN_JAVA_HOME`
+  - и отдельно `AURORA_JAVA_HOME`
+
 ## 2. Что делает каждая Aurora-конфигурация
 
-### `Aurora Build Debug`
+### `Aurora | Build Debug`
 
 Эта конфигурация запускает:
 
@@ -56,7 +112,7 @@
 - если нужно обновить RPM-пакет;
 - если перед запуском хочется посмотреть, что именно собралось.
 
-### `Aurora Install Debug To Emulator`
+### `Aurora | Install Debug To Emulator`
 
 Эта конфигурация запускает:
 
@@ -74,7 +130,7 @@
 - если нужно отдельно проверить стадию установки;
 - если хочется разделить build и install на два отдельных шага.
 
-### `Aurora Kill App On Emulator`
+### `Aurora | Kill App On Emulator`
 
 Эта конфигурация запускает:
 
@@ -93,7 +149,7 @@
 - если хочется исключить сценарий, где старый процесс ещё жив;
 - если идёт диагностика проблем жизненного цикла на Aurora.
 
-### `Aurora Run Debug On Emulator`
+### `Aurora | Run Debug On Emulator`
 
 Эта конфигурация запускает before-run сборку, а затем:
 
@@ -113,7 +169,7 @@
 - если нужно быстро пересобрать и сразу увидеть результат;
 - если хочется запускать Aurora примерно так же удобно, как обычный Run в Android Studio.
 
-### `Aurora Rebuild + Run Cleanly`
+### `Aurora | Rebuild + Run Cleanly`
 
 Эта конфигурация похожа на предыдущую, но использует `--rerun-tasks`.
 
@@ -195,10 +251,10 @@ xcodebuild -project iosApp/iosApp.xcodeproj \
 ### iOS simulator install + run
 
 ```bash
-xcrun simctl install 93D328E6-4DF9-4F12-ABD6-49BA0BA737ED \
-'/Users/ruslaneremeev/Library/Developer/Xcode/DerivedData/iosApp-ahtvkemskgwwiagaaeblvzgdmeks/Build/Products/Debug-iphonesimulator/Aurora KMP Demo.app'
+xcrun simctl install booted \
+"$(find ~/Library/Developer/Xcode/DerivedData -path '*Debug-iphonesimulator/Aurora KMP Demo.app' | head -n 1)"
 
-xcrun simctl launch 93D328E6-4DF9-4F12-ABD6-49BA0BA737ED com.example.aurorakmpdemo.ios
+xcrun simctl launch booted com.example.aurorakmpdemo.ios
 ```
 
 ## 4. Куда сохраняются собранные артефакты
@@ -207,11 +263,11 @@ xcrun simctl launch 93D328E6-4DF9-4F12-ABD6-49BA0BA737ED com.example.aurorakmpde
 
 Android debug APK лежит по пути:
 
-[`/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/outputs/apk/debug/composeApp-debug.apk`](/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/outputs/apk/debug/composeApp-debug.apk)
+`composeApp/build/outputs/apk/debug/composeApp-debug.apk`
 
 Также встречается intermediate APK:
 
-[`/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/intermediates/apk/debug/composeApp-debug.apk`](/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/intermediates/apk/debug/composeApp-debug.apk)
+`composeApp/build/intermediates/apk/debug/composeApp-debug.apk`
 
 Практически ориентироваться лучше на `build/outputs/apk/...`.
 
@@ -219,7 +275,7 @@ Android debug APK лежит по пути:
 
 Основной x86_64 RPM для эмулятора лежит по пути:
 
-[`/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/rpm/debug/x86_64/RPMS/x86_64/com.example.aurorakmpdemo-0.0.1-1.x86_64.rpm`](/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/rpm/debug/x86_64/RPMS/x86_64/com.example.aurorakmpdemo-0.0.1-1.x86_64.rpm)
+`composeApp/build/rpm/debug/x86_64/RPMS/x86_64/com.example.aurorakmpdemo-0.0.2-1.x86_64.rpm`
 
 Сопутствующие RPM рядом:
 
@@ -228,16 +284,27 @@ Android debug APK лежит по пути:
 
 Есть и `src.rpm`, и `aarch64` вариант для других сценариев:
 
-- [`/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/rpm/debug/x86_64/SRPMS/com.example.aurorakmpdemo-0.0.1-1.src.rpm`](/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/rpm/debug/x86_64/SRPMS/com.example.aurorakmpdemo-0.0.1-1.src.rpm)
-- [`/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/rpm/debug/aarch64/RPMS/aarch64/com.example.aurorakmpdemo-0.0.1-1.aarch64.rpm`](/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/rpm/debug/aarch64/RPMS/aarch64/com.example.aurorakmpdemo-0.0.1-1.aarch64.rpm)
+- `composeApp/build/rpm/debug/x86_64/SRPMS/com.example.aurorakmpdemo-0.0.2-1.src.rpm`
+- `composeApp/build/rpm/debug/aarch64/RPMS/aarch64/com.example.aurorakmpdemo-0.0.2-1.aarch64.rpm`
 
 Если цель - запуск именно в текущем Aurora emulator на Mac, обычно смотреть нужно прежде всего на `x86_64` debug RPM.
+
+## 5. Что зафиксировано в версии 0.0.2
+
+В качестве контрольной точки `0.0.2` в проекте зафиксированы:
+
+- общие ресурсы через `Compose Resources`;
+- переходы через `Compose Navigation`;
+- отдельный diagnostic flow для drawable-ресурсов;
+- серия повторных проверок Aurora runtime для попытки разрешить проблему `XML VectorDrawable`.
+
+На текущий момент проблема с XML drawable на Aurora остаётся открытой, поэтому в проекте она зафиксирована как known issue, а не как решённая часть shared resource-layer.
 
 ### iOS app bundle
 
 iOS host app после `xcodebuild` лежит по пути:
 
-[`/Users/ruslaneremeev/Library/Developer/Xcode/DerivedData/iosApp-ahtvkemskgwwiagaaeblvzgdmeks/Build/Products/Debug-iphonesimulator/Aurora KMP Demo.app`](/Users/ruslaneremeev/Library/Developer/Xcode/DerivedData/iosApp-ahtvkemskgwwiagaaeblvzgdmeks/Build/Products/Debug-iphonesimulator/Aurora%20KMP%20Demo.app)
+`~/Library/Developer/Xcode/DerivedData/.../Build/Products/Debug-iphonesimulator/Aurora KMP Demo.app`
 
 ## 5. Какие служебные Aurora-артефакты тоже появляются
 
@@ -251,8 +318,8 @@ iOS host app после `xcodebuild` лежит по пути:
 
 Например:
 
-- [`/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/rpm/debug/x86_64/applications/com.example.aurorakmpdemo.desktop`](/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/rpm/debug/x86_64/applications/com.example.aurorakmpdemo.desktop)
-- [`/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/rpm/debug/x86_64/com.example.aurorakmpdemo.spec`](/Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android/composeApp/build/rpm/debug/x86_64/com.example.aurorakmpdemo.spec)
+- `composeApp/build/rpm/debug/x86_64/applications/com.example.aurorakmpdemo.desktop`
+- `composeApp/build/rpm/debug/x86_64/com.example.aurorakmpdemo.spec`
 
 Это полезно, если нужно:
 
@@ -274,7 +341,7 @@ iOS host app после `xcodebuild` лежит по пути:
 Если работать из терминала, основной практический сценарий такой:
 
 ```bash
-cd /Users/ruslaneremeev/Documents/Work/Aurora/kotlin-multiplatform-compose-multiplatform-shared-android
+cd /path/to/kotlin-multiplatform-compose-multiplatform-shared-android
 ./gradlew -PbuildVariant=aurora :composeApp:buildDebugPipeline
 ./gradlew -PbuildVariant=aurora :composeApp:runDebugOnEmulatorNoSandboxStreaming --stacktrace
 ```
