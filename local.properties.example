@@ -1,0 +1,12 @@
+# Optional local machine overrides.
+# Copy this file to local.properties only if you need explicit local paths.
+
+# Android SDK discovery
+# sdk.dir=/absolute/path/to/android-sdk
+
+# Optional direct tool overrides
+# adb.path=/absolute/path/to/android-sdk/platform-tools/adb
+# emulator.path=/absolute/path/to/android-sdk/emulator/emulator
+
+# Optional default Android emulator AVD name
+# android.avd=Pixel_8_Pro

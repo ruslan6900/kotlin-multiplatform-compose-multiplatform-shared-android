@@ -16,6 +16,8 @@ expect fun createPostsStorage(): PostsStorage
 
 expect fun shouldUseAuroraRenderSmokeTest(): Boolean
 
+expect fun configuredDrawableExperiment(): String?
+
 expect fun currentProcessId(): Long
 
 expect fun diagnosticLogPath(): String?

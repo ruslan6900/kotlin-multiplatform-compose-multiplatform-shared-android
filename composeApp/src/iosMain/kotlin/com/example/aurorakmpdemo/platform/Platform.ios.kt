@@ -53,6 +53,8 @@ actual fun createPostsStorage(): PostsStorage = IosRoomStorageHolder.storage
 
 actual fun shouldUseAuroraRenderSmokeTest(): Boolean = true
 
+actual fun configuredDrawableExperiment(): String? = null
+
 actual fun currentProcessId(): Long = getpid().toLong()
 
 actual fun diagnosticLogPath(): String? = null

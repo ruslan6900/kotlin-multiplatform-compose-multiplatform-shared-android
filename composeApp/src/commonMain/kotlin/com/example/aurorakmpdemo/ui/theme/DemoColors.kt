@@ -1,0 +1,36 @@
+package com.example.aurorakmpdemo.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+object DemoColors {
+    val superSmokeBackground = Color(0xFF5A0014)
+    val normalDemoBackground = Color(0xFF4B3A00)
+    val panelNavy = Color(0xFF112A46)
+    val panelNavigation = Color(0xFF1C274C)
+    val panelGreen = Color(0xFF124A34)
+    val panelPurple = Color(0xFF2B0A3D)
+    val panelBrown = Color(0xFF3A1C0D)
+    val panelBlack = Color(0xFF101010)
+    val inputBackground = Color(0xFF5C2D12)
+    val inputBorder = Color(0xFFFFC078)
+    val inputPlaceholder = Color(0xFFFFE8CC)
+    val buttonBlue = Color(0xFF1971C2)
+    val buttonOrange = Color(0xFFF76707)
+    val buttonGreen = Color(0xFF2B8A3E)
+    val buttonPurple = Color(0xFFAE3EC9)
+    val buttonRed = Color(0xFFC92A2A)
+    val buttonIndigo = Color(0xFF5C7CFA)
+    val buttonMuted = Color(0xFF495057)
+    val logText = Color(0xFF69DB7C)
+    val logEmpty = Color(0xFFCED4DA)
+    val textPrimary = Color(0xFFFFF7DB)
+    val textAccent = Color(0xFFF0AB00)
+    val textSupport = Color(0xFF9AE6A6)
+    val textMuted = Color(0xFFD0EBFF)
+    val statusBlue = Color(0xFF4DABF7)
+    val statusOrange = Color(0xFFFF922B)
+    val statusPink = Color(0xFFE599F7)
+    val statusLime = Color(0xFF94D82D)
+    val statusCyan = Color(0xFF66D9E8)
+    val statusYellow = Color(0xFFFFE066)
+}

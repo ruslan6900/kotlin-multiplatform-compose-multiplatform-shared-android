@@ -9,6 +9,10 @@ plugins {
     id("org.jetbrains.compose") version "0.0.4-aurora"
 }
 
+version = "0.0.2"
+
+val auroraNavigationVersion = "9999.0.0-SNAPSHOT"
+
 auroraBuild {
     targets {
         arm64.set("auroraArm64")
@@ -17,6 +21,7 @@ auroraBuild {
     rpm {
         id.set("com.example.aurorakmpdemo")
         name.set("Aurora KMP Demo")
+        version.set(project.version.toString())
         description.set("Aurora Kotlin Multiplatform compatibility check.")
         icons.set(projectDir.toPath().resolve("icons"))
         libs3rdParty.set(listOf("maliit-glib"))
@@ -37,11 +42,36 @@ auroraDevices {
     }
 }
 
-val auroraHost = "127.0.0.1"
-val auroraUser = "defaultuser"
-val auroraPort = "2223"
-val auroraSshKey = "${System.getProperty("user.home")}/AuroraOS/vmshare/ssh/private_keys/sdk"
+val auroraHost = providers.gradleProperty("aurora.host")
+    .orElse(providers.environmentVariable("AURORA_HOST"))
+    .orElse("127.0.0.1")
+    .get()
+val auroraUser = providers.gradleProperty("aurora.user")
+    .orElse(providers.environmentVariable("AURORA_USER"))
+    .orElse("defaultuser")
+    .get()
+val auroraPort = providers.gradleProperty("aurora.port")
+    .orElse(providers.environmentVariable("AURORA_PORT"))
+    .orElse("2223")
+    .get()
+val auroraSshKey = providers.gradleProperty("aurora.sshKey")
+    .orElse(providers.environmentVariable("AURORA_SSH_KEY"))
+    .orElse("${System.getProperty("user.home")}/AuroraOS/vmshare/ssh/private_keys/sdk")
+    .get()
+val auroraDrawableExperiment = providers.gradleProperty("aurora.drawableExperiment")
+    .orElse(providers.environmentVariable("AURORA_DRAWABLE_EXPERIMENT"))
+    .orNull
+val auroraDrawableExperimentFlag = auroraDrawableExperiment
+    ?.let { " -e 'AURORA_DRAWABLE_EXPERIMENT=$it'" }
+    .orEmpty()
 val auroraAppId = "com.example.aurorakmpdemo"
+
+tasks.register<Delete>("purgeAuroraMacMetadata") {
+    group = "Aurora Devices"
+    description = "Delete macOS metadata files that break Aurora RPM packaging."
+    delete(fileTree(projectDir) { include("**/.DS_Store") })
+    delete(fileTree(layout.buildDirectory) { include("**/.DS_Store") })
+}
 
 tasks.register<Exec>("killAuroraDemoOnEmulator") {
     group = "Aurora Devices"
@@ -61,6 +91,7 @@ tasks.register<Exec>("killAuroraDemoOnEmulator") {
           $auroraUser@$auroraHost \
           '
           ps aux | grep -E "(/usr/bin/$auroraAppId|private-bin=$auroraAppId)" | grep -v grep | awk '"'"'{print ${'$'}2}'"'"' | xargs -r kill -9 2>/dev/null || true
+          ps aux | grep -F "runtime-manager-tool Control startDebug $auroraAppId" | grep -v grep | awk '"'"'{print ${'$'}2}'"'"' | xargs -r kill -9 2>/dev/null || true
           sleep 1
           ps aux | grep -i "$auroraAppId" | grep -v grep || true
           exit 0
@@ -82,7 +113,7 @@ tasks.register<Exec>("runDebugOnEmulatorNoSandbox") {
         "-p", auroraPort,
         "-i", auroraSshKey,
         "$auroraUser@$auroraHost",
-        "runtime-manager-tool Control startDebug $auroraAppId --nosandbox --detach --output-to-console",
+        "runtime-manager-tool Control startDebug $auroraAppId --nosandbox --detach --output-to-console$auroraDrawableExperimentFlag",
     )
 }
 
@@ -107,10 +138,28 @@ tasks.register<Exec>("runDebugOnEmulatorNoSandboxStreaming") {
           -p $auroraPort \
           -i $auroraSshKey \
           $auroraUser@$auroraHost \
-          'runtime-manager-tool Control startDebug $auroraAppId --nosandbox --output-to-console' \
+          'runtime-manager-tool Control startDebug $auroraAppId --nosandbox --output-to-console$auroraDrawableExperimentFlag' \
           2>&1 | tee ${project.rootProject.file("outputs/aurora_runtime_streaming.log").absolutePath}
         """.trimIndent(),
     )
+}
+
+tasks.matching { it.name == "installDebugToEmulator" }.configureEach {
+    dependsOn("buildDebugPackageAuroraArm64", "buildDebugPackageAuroraX64")
+}
+
+tasks.matching {
+    it.name in setOf(
+        "buildDebugPackageAuroraArm64",
+        "buildDebugPackageAuroraX64",
+        "buildDebugPipeline",
+        "installDebugToEmulator",
+        "runDebugOnEmulator",
+        "runDebugOnEmulatorNoSandbox",
+        "runDebugOnEmulatorNoSandboxStreaming",
+    )
+}.configureEach {
+    dependsOn("purgeAuroraMacMetadata")
 }
 
 kotlin {
@@ -148,6 +197,8 @@ kotlin {
                 implementation(compose.foundation)
                 implementation(compose.material3)
                 implementation(compose.ui)
+                implementation(compose.components.resources)
+                implementation("org.jetbrains.androidx.navigation:navigation-compose:$auroraNavigationVersion")
                 implementation(project.dependencies.platform("io.insert-koin:koin-bom:4.2.0-aurora"))
                 implementation("io.insert-koin:koin-core")
                 implementation("io.insert-koin:koin-compose")
@@ -191,4 +242,16 @@ compose.resources {
 
 room {
     schemaDirectory("$projectDir/schemas")
+}
+
+tasks.matching { it.name == "compileKotlinAuroraX64" }.configureEach {
+    mustRunAfter("compileKotlinAuroraArm64")
+}
+
+tasks.matching { it.name == "linkDebugExecutableAuroraX64" }.configureEach {
+    mustRunAfter("linkDebugExecutableAuroraArm64")
+}
+
+tasks.matching { it.name == "buildDebugPackageAuroraX64" }.configureEach {
+    mustRunAfter("buildDebugPackageAuroraArm64")
 }

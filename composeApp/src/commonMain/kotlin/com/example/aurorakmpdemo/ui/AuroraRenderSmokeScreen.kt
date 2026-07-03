@@ -3,10 +3,11 @@ package com.example.aurorakmpdemo.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,8 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -35,22 +36,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.example.aurorakmpdemo.di.AuroraFriendlyKoin
 import com.example.aurorakmpdemo.data.Post
 import com.example.aurorakmpdemo.data.PostsRepository
 import com.example.aurorakmpdemo.data.buildHttpClient
 import com.example.aurorakmpdemo.data.currentTimeTickerFlow
 import com.example.aurorakmpdemo.data.formattedCurrentTime
+import com.example.aurorakmpdemo.di.AuroraFriendlyKoin
 import com.example.aurorakmpdemo.platform.PlatformDiagnosticsProvider
 import com.example.aurorakmpdemo.platform.createPostsStorage
-import kotlinx.coroutines.launch
+import com.example.aurorakmpdemo.resources.*
+import com.example.aurorakmpdemo.ui.theme.DemoColors
+import com.example.aurorakmpdemo.ui.theme.demoTypography
 import kotlinx.coroutines.delay
-import kotlin.time.Clock
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.vectorResource
 
 enum class AuroraBootMode {
     SuperSmoke,
@@ -58,14 +66,24 @@ enum class AuroraBootMode {
     NormalDemo,
 }
 
+enum class AuroraDemoRoute(
+    val route: String,
+) {
+    Home("home"),
+    Network("network"),
+    Database("database"),
+}
+
 @Composable
 fun AuroraStagedBootContainer(
     startupId: String,
     stageLabel: String,
+    backgroundColor: Color = DemoColors.superSmokeBackground,
     contentDelayMs: Long = 100L,
     content: @Composable () -> Unit,
 ) {
     TraceComposableLifecycle("AuroraStagedBootContainer", "startupId=$startupId stage=$stageLabel")
+    val typography = demoTypography()
     val lifecycleOwner = LocalLifecycleOwner.current
     var showContent by remember(startupId) { mutableStateOf(false) }
     var renderPulse by remember(startupId) { mutableStateOf(0) }
@@ -122,7 +140,7 @@ fun AuroraStagedBootContainer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF5A0014)),
+            .background(backgroundColor),
     ) {
         if (showContent) {
             @Suppress("UNUSED_EXPRESSION")
@@ -139,34 +157,20 @@ fun AuroraStagedBootContainer(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 BasicText(
-                    text = "Starting Aurora UI...",
-                    style = TextStyle(
-                        color = Color.White,
-                        fontSize = 30.sp,
-                        fontWeight = FontWeight.Black,
-                    ),
+                    text = stringResource(Res.string.starting_ui),
+                    style = TextStyle(color = DemoColors.textPrimary).merge(typography.hero.copy(fontSize = 30.sp, lineHeight = 34.sp)),
                 )
                 BasicText(
                     text = stageLabel,
-                    style = TextStyle(
-                        color = Color(0xFFFFE066),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
+                    style = TextStyle(color = DemoColors.textAccent).merge(typography.subtitle.copy(fontSize = 20.sp, lineHeight = 24.sp)),
                 )
                 BasicText(
                     text = startupId,
-                    style = TextStyle(
-                        color = Color(0xFFD0EBFF),
-                        fontSize = 14.sp,
-                    ),
+                    style = TextStyle(color = DemoColors.textMuted).merge(typography.caption),
                 )
                 BasicText(
                     text = "start=$startCount resume=$resumeCount event=$lastLifecycleEvent gen=$subtreeGeneration",
-                    style = TextStyle(
-                        color = Color(0xFFB2F2BB),
-                        fontSize = 14.sp,
-                    ),
+                    style = TextStyle(color = DemoColors.textSupport).merge(typography.caption),
                 )
             }
         }
@@ -179,8 +183,11 @@ fun AuroraSuperSmokeScreen(
     lifecycleSummary: String = "",
     onOpenRenderSmoke: () -> Unit,
     onOpenNormalDemo: (() -> Unit)? = null,
+    onOpenDrawableExperiments: (() -> Unit)? = null,
 ) {
     TraceComposableLifecycle("AuroraSuperSmokeScreen", "startupId=$startupId")
+    val typography = demoTypography()
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -189,46 +196,27 @@ fun AuroraSuperSmokeScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             BasicText(
-                text = "HELLO AURORA",
-                style = TextStyle(
-                    color = Color.White,
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Black,
-                ),
+                text = stringResource(Res.string.hero_title),
+                style = TextStyle(color = DemoColors.textPrimary).merge(typography.hero),
             )
             BasicText(
-                text = "Super smoke mode",
-                style = TextStyle(
-                    color = Color.Yellow,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
+                text = stringResource(Res.string.mode_super_smoke),
+                style = TextStyle(color = DemoColors.textAccent).merge(typography.subtitle),
             )
             BasicText(
                 text = startupId,
-                style = TextStyle(
-                    color = Color(0xFFD0EBFF),
-                    fontSize = 14.sp,
-                ),
+                style = TextStyle(color = DemoColors.textMuted).merge(typography.caption),
             )
             if (lifecycleSummary.isNotBlank()) {
                 BasicText(
                     text = lifecycleSummary,
-                    style = TextStyle(
-                        color = Color(0xFFB2F2BB),
-                        fontSize = 14.sp,
-                    ),
+                    style = TextStyle(color = DemoColors.textSupport).merge(typography.caption),
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .background(Color.Green, RoundedCornerShape(18.dp))
-                    .border(2.dp, Color.White, RoundedCornerShape(18.dp)),
-            )
+            SafePlaceholderBadge(modifier = Modifier.size(96.dp))
             DiagnosticButton(
-                label = "Open render smoke",
-                background = Color(0xFF1971C2),
+                label = stringResource(Res.string.open_render_smoke),
+                background = DemoColors.buttonBlue,
                 onClick = {
                     UiTrace.log("AuroraSuperSmokeScreen", "startupId=$startupId Open render smoke tapped")
                     onOpenRenderSmoke()
@@ -236,11 +224,21 @@ fun AuroraSuperSmokeScreen(
             )
             onOpenNormalDemo?.let { openNormalDemo ->
                 DiagnosticButton(
-                    label = "Open normal demo",
-                    background = Color(0xFFF76707),
+                    label = stringResource(Res.string.open_normal_demo),
+                    background = DemoColors.buttonOrange,
                     onClick = {
                         UiTrace.log("AuroraSuperSmokeScreen", "startupId=$startupId Open normal demo tapped")
                         openNormalDemo()
+                    },
+                )
+            }
+            onOpenDrawableExperiments?.let { openDrawableExperiments ->
+                DiagnosticButton(
+                    label = stringResource(Res.string.open_drawable_experiments),
+                    background = DemoColors.buttonPurple,
+                    onClick = {
+                        UiTrace.log("AuroraSuperSmokeScreen", "startupId=$startupId Open drawable experiments tapped")
+                        openDrawableExperiments()
                     },
                 )
             }
@@ -252,13 +250,32 @@ fun AuroraSuperSmokeScreen(
 fun AuroraRenderSmokeScreen(
     startupId: String,
     lifecycleSummary: String = "",
-    modeTitle: String = "Compose render smoke test",
-    dashboardTitle: String = "Aurora KMP Demo Dashboard",
-    koinStatusLabel: String = "Not initialized in smoke mode",
+    modeTitle: String = stringResource(Res.string.mode_render_smoke),
+    dashboardTitle: String = stringResource(Res.string.dashboard_smoke_title),
+    koinStatusLabel: String = stringResource(Res.string.status_value_not_initialized_smoke),
+    backgroundColor: Color = DemoColors.superSmokeBackground,
+    page: AuroraDemoRoute = AuroraDemoRoute.Home,
+    onNavigate: ((AuroraDemoRoute) -> Unit)? = null,
     onOpenSuperSmoke: (() -> Unit)? = null,
     onOpenNormalDemo: (() -> Unit)? = null,
 ) {
     TraceComposableLifecycle("AuroraRenderSmokeScreen", "startupId=$startupId")
+    val typography = demoTypography()
+    val notCheckedLabel = stringResource(Res.string.status_value_not_checked)
+    val initializedLabel = stringResource(Res.string.status_value_initialized)
+    val notInitializedLabel = stringResource(Res.string.status_value_not_initialized)
+    val runningLabel = stringResource(Res.string.status_value_running)
+    val loadingLabel = stringResource(Res.string.status_value_loading)
+    val savedFetchedPostLabel = stringResource(Res.string.status_value_saved_fetched_post)
+    val manualSaveSuccessLabel = stringResource(Res.string.status_value_manual_save_success)
+    val readSuccessLabel = stringResource(Res.string.status_value_read_success)
+    val readEmptyLabel = stringResource(Res.string.status_value_read_empty)
+    val latestNoteSavedLabel = stringResource(Res.string.status_value_latest_note_saved)
+    val latestNoteRestoredLabel = stringResource(Res.string.status_value_latest_note_restored)
+    val noLatestNoteLabel = stringResource(Res.string.status_value_no_latest_note)
+    val noteEmptyLabel = stringResource(Res.string.status_value_note_empty)
+    val unknownPlatformLabel = stringResource(Res.string.platform_unknown)
+    val waitingDiagnosticsLabel = stringResource(Res.string.platform_waiting_details)
     val diagnosticsProvider = remember { PlatformDiagnosticsProvider() }
     val storage = remember { createPostsStorage() }
     val client = remember { buildHttpClient() }
@@ -267,11 +284,11 @@ fun AuroraRenderSmokeScreen(
     val logs = remember { mutableStateListOf<String>() }
 
     var currentTime by remember { mutableStateOf("--:--:--") }
-    var platformName by remember { mutableStateOf("Unknown") }
-    var platformDetails by remember { mutableStateOf(listOf("Waiting for diagnostics...")) }
+    var platformName by remember { mutableStateOf(unknownPlatformLabel) }
+    var platformDetails by remember { mutableStateOf(listOf(waitingDiagnosticsLabel)) }
     var koinStatus by remember { mutableStateOf(koinStatusLabel) }
-    var ktorStatus by remember { mutableStateOf("Not checked") }
-    var sqlStatus by remember { mutableStateOf("Not checked") }
+    var ktorStatus by remember { mutableStateOf(notCheckedLabel) }
+    var roomStatus by remember { mutableStateOf(notCheckedLabel) }
     var lastPost by remember { mutableStateOf<Post?>(null) }
     var latestNote by remember { mutableStateOf("") }
     var noteInput by remember { mutableStateOf("") }
@@ -288,7 +305,7 @@ fun AuroraRenderSmokeScreen(
         val diagnostics = diagnosticsProvider.snapshot()
         platformName = diagnostics.platform
         platformDetails = diagnostics.details
-        koinStatus = if (AuroraFriendlyKoin.isStarted()) "Initialized" else "Not initialized"
+        koinStatus = if (AuroraFriendlyKoin.isStarted()) initializedLabel else notInitializedLabel
         latestNote = storage.getLatestNote().orEmpty()
         logs.add("[${nowStamp()}] App started")
         logs.add("[${nowStamp()}] $modeTitle booted")
@@ -302,7 +319,11 @@ fun AuroraRenderSmokeScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundColor),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -311,302 +332,538 @@ fun AuroraRenderSmokeScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             BasicText(
-                text = "HELLO AURORA",
-                style = TextStyle(
-                    color = Color.White,
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Black,
-                ),
+                text = stringResource(Res.string.hero_title),
+                style = TextStyle(color = DemoColors.textPrimary).merge(typography.hero),
             )
 
             BasicText(
                 text = modeTitle,
-                style = TextStyle(
-                    color = Color(0xFFFFE066),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
+                style = TextStyle(color = DemoColors.textAccent).merge(typography.subtitle.copy(fontSize = 20.sp, lineHeight = 24.sp)),
             )
 
-            BasicText(
-                text = dashboardTitle,
-                style = TextStyle(
-                    color = Color(0xFF8CE99A),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SafePlaceholderBadge(modifier = Modifier.size(56.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    BasicText(
+                        text = dashboardTitle,
+                        style = TextStyle(color = DemoColors.textSupport).merge(typography.section.copy(fontSize = 24.sp, lineHeight = 28.sp)),
+                    )
+                    BasicText(
+                        text = stringResource(Res.string.app_subtitle),
+                        style = TextStyle(color = DemoColors.textMuted).merge(typography.caption),
+                    )
+                }
+            }
 
             BasicText(
                 text = startupId,
-                style = TextStyle(
-                    color = Color(0xFFD0EBFF),
-                    fontSize = 14.sp,
-                ),
+                style = TextStyle(color = DemoColors.textMuted).merge(typography.caption),
             )
+
             if (lifecycleSummary.isNotBlank()) {
                 BasicText(
                     text = lifecycleSummary,
-                    style = TextStyle(
-                        color = Color(0xFFB2F2BB),
-                        fontSize = 14.sp,
-                    ),
+                    style = TextStyle(color = DemoColors.textSupport).merge(typography.caption),
                 )
             }
 
-            DiagnosticPanel(
-                title = "Status",
-                background = Color(0xFF101F3C),
-            ) {
-                StatusRow(label = "Platform", value = platformName, accent = Color(0xFF4DABF7))
-                StatusRow(label = "Compose", value = "running", accent = Color(0xFFFF922B))
-                StatusRow(label = "Koin", value = koinStatus, accent = Color(0xFFE599F7))
-                StatusRow(label = "Ktor", value = ktorStatus, accent = Color(0xFF94D82D))
-                StatusRow(label = "Room", value = sqlStatus, accent = Color(0xFF66D9E8))
-                StatusRow(label = "Datetime", value = currentTime, accent = Color(0xFFFFE066))
+            onNavigate?.let { navigate ->
+                NavigationTabs(
+                    currentPage = page,
+                    onNavigate = navigate,
+                )
             }
 
-            DiagnosticPanel(
-                title = "Visual Diagnostics",
-                background = Color(0xFF2B0A3D),
-            ) {
-                BasicText(
-                    text = "Large white text, yellow subtitle, and four color blocks should be visible.",
-                    style = TextStyle(
-                        color = Color(0xFFFFF3BF),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ColorSwatch(Color.Red)
-                    ColorSwatch(Color.Green)
-                    ColorSwatch(Color.Blue)
-                    ColorSwatch(Color.Yellow)
+            if (page == AuroraDemoRoute.Home || onNavigate == null) {
+                DiagnosticPanel(
+                    title = stringResource(Res.string.status_title),
+                    background = DemoColors.panelNavy,
+                ) {
+                    StatusRow(stringResource(Res.string.status_platform), platformName, DemoColors.statusBlue)
+                    StatusRow(stringResource(Res.string.status_compose), runningLabel, DemoColors.statusOrange)
+                    StatusRow(stringResource(Res.string.status_koin), koinStatus, DemoColors.statusPink)
+                    StatusRow(stringResource(Res.string.status_ktor), ktorStatus, DemoColors.statusLime)
+                    StatusRow(stringResource(Res.string.status_room), roomStatus, DemoColors.statusCyan)
+                    StatusRow(stringResource(Res.string.status_datetime), currentTime, DemoColors.statusYellow)
                 }
             }
 
-            DiagnosticPanel(
-                title = "Actions",
-                background = Color(0xFF0B3D2E),
-            ) {
-                ButtonRow(
-                    firstLabel = "Check Ktor",
-                    firstColor = Color(0xFF1971C2),
-                    firstAction = {
-                        scope.launch {
-                            UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Ktor check started")
-                            currentTime = nowStamp()
-                            logs.add("[${nowStamp()}] Ktor check started")
-                            ktorStatus = "Loading"
-                            runCatching { repository.fetchAndPersistPost(1) }
-                                .onSuccess { result ->
-                                    ktorStatus = "Success"
-                                    sqlStatus = "Saved fetched post"
-                                    lastPost = result.cached ?: result.remote
-                                    logs.add("[${nowStamp()}] Ktor request success")
-                                    logs.add("[${nowStamp()}] Room save success")
-                                    UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Ktor success cached=${result.cached != null}")
-                                }
-                                .onFailure { error ->
-                                    ktorStatus = "Error: ${error.message ?: "unknown"}"
-                                    logs.add("[${nowStamp()}] Ktor request error: ${error.message ?: "unknown"}")
-                                    UiTrace.logError("AuroraRenderSmokeScreen", error)
-                                }
-                        }
-                    },
-                    secondLabel = "Save test post",
-                    secondColor = Color(0xFF2B8A3E),
-                    secondAction = {
-                        scope.launch {
-                            UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Room manual save started")
-                            val post = Post(
-                                userId = 42,
-                                id = 777,
-                                title = "Aurora smoke saved post",
-                                body = "If you can read this, Room storage survived the render smoke test.",
-                            )
-                            currentTime = nowStamp()
-                            runCatching { storage.savePost(post) }
-                                .onSuccess {
-                                    sqlStatus = "Manual save success"
-                                    lastPost = post
-                                    logs.add("[${nowStamp()}] Room manual save success")
-                                    UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Room manual save success")
-                                }
-                                .onFailure { error ->
-                                    sqlStatus = "Save error: ${error.message ?: "unknown"}"
-                                    logs.add("[${nowStamp()}] Room manual save error: ${error.message ?: "unknown"}")
-                                    UiTrace.logError("AuroraRenderSmokeScreen", error)
-                                }
-                        }
-                    },
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                ButtonRow(
-                    firstLabel = "Read saved post",
-                    firstColor = Color(0xFFAE3EC9),
-                    firstAction = {
-                        scope.launch {
-                            UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Room read started")
-                            currentTime = nowStamp()
-                            runCatching { storage.getPost(777) ?: storage.getPost(1) }
-                                .onSuccess { post ->
-                                    if (post == null) {
-                                        sqlStatus = "Read returned empty"
-                                        logs.add("[${nowStamp()}] Room read returned empty")
-                                        UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Room read empty")
-                                    } else {
-                                        sqlStatus = "Read success"
+            if (page == AuroraDemoRoute.Home || onNavigate == null) {
+                DiagnosticPanel(
+                    title = stringResource(Res.string.visual_diagnostics_title),
+                    background = DemoColors.panelPurple,
+                ) {
+                    BasicText(
+                        text = stringResource(Res.string.visual_diagnostics_hint),
+                        style = TextStyle(color = DemoColors.textPrimary).merge(typography.body),
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ColorSwatch(Color.Red)
+                        ColorSwatch(Color.Green)
+                        ColorSwatch(Color.Blue)
+                        SafePlaceholderBadge(modifier = Modifier.size(68.dp))
+                    }
+                }
+            }
+
+            if (page == AuroraDemoRoute.Network || page == AuroraDemoRoute.Database || onNavigate == null) {
+                DiagnosticPanel(
+                    title = stringResource(Res.string.actions_title),
+                    background = DemoColors.panelGreen,
+                ) {
+                    ButtonRow(
+                        firstLabel = stringResource(Res.string.check_ktor),
+                        firstColor = DemoColors.buttonBlue,
+                        firstAction = {
+                            scope.launch {
+                                UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Ktor check started")
+                                currentTime = nowStamp()
+                                logs.add("[${nowStamp()}] Ktor check started")
+                                ktorStatus = loadingLabel
+                                runCatching { repository.fetchAndPersistPost(1) }
+                                    .onSuccess { result ->
+                                        ktorStatus = getString(Res.string.status_value_success)
+                                        roomStatus = savedFetchedPostLabel
+                                        lastPost = result.cached ?: result.remote
+                                        logs.add("[${nowStamp()}] Ktor request success")
+                                        logs.add("[${nowStamp()}] Room save success")
+                                        UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Ktor success cached=${result.cached != null}")
+                                    }
+                                    .onFailure { error ->
+                                        ktorStatus = getString(Res.string.status_error_prefix, error.message ?: "unknown")
+                                        logs.add("[${nowStamp()}] Ktor request error: ${error.message ?: "unknown"}")
+                                        UiTrace.logError("AuroraRenderSmokeScreen", error)
+                                    }
+                            }
+                        },
+                        secondLabel = stringResource(Res.string.save_test_post),
+                        secondColor = DemoColors.buttonGreen,
+                        secondAction = {
+                            scope.launch {
+                                UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Room manual save started")
+                                val post = Post(
+                                    userId = 42,
+                                    id = 777,
+                                    title = getString(Res.string.demo_saved_post_title),
+                                    body = getString(Res.string.demo_saved_post_body),
+                                )
+                                currentTime = nowStamp()
+                                runCatching { storage.savePost(post) }
+                                    .onSuccess {
+                                        roomStatus = manualSaveSuccessLabel
                                         lastPost = post
-                                        logs.add("[${nowStamp()}] Room read success")
-                                        UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Room read success")
+                                        logs.add("[${nowStamp()}] Room manual save success")
+                                        UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Room manual save success")
+                                    }
+                                    .onFailure { error ->
+                                        roomStatus = getString(Res.string.status_save_error, error.message ?: "unknown")
+                                        logs.add("[${nowStamp()}] Room manual save error: ${error.message ?: "unknown"}")
+                                        UiTrace.logError("AuroraRenderSmokeScreen", error)
+                                    }
+                            }
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ButtonRow(
+                        firstLabel = stringResource(Res.string.read_saved_post),
+                        firstColor = DemoColors.buttonPurple,
+                        firstAction = {
+                            scope.launch {
+                                UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Room read started")
+                                currentTime = nowStamp()
+                                runCatching { storage.getPost(777) ?: storage.getPost(1) }
+                                    .onSuccess { post ->
+                                        if (post == null) {
+                                            roomStatus = readEmptyLabel
+                                            logs.add("[${nowStamp()}] Room read returned empty")
+                                            UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Room read empty")
+                                        } else {
+                                            roomStatus = readSuccessLabel
+                                            lastPost = post
+                                            logs.add("[${nowStamp()}] Room read success")
+                                            UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Room read success")
+                                        }
+                                    }
+                                    .onFailure { error ->
+                                        roomStatus = getString(Res.string.status_read_error, error.message ?: "unknown")
+                                        logs.add("[${nowStamp()}] Room read error: ${error.message ?: "unknown"}")
+                                        UiTrace.logError("AuroraRenderSmokeScreen", error)
+                                    }
+                            }
+                        },
+                        secondLabel = stringResource(Res.string.clear_log),
+                        secondColor = DemoColors.buttonRed,
+                        secondAction = {
+                            UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId log cleared")
+                            logs.clear()
+                            currentTime = nowStamp()
+                            logs.add("[${nowStamp()}] Log cleared")
+                        },
+                    )
+                    if (page == AuroraDemoRoute.Database || onNavigate == null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        NotePanel(
+                            noteInput = noteInput,
+                            latestNote = latestNote,
+                            onNoteInputChange = { noteInput = it },
+                            onSaveNote = {
+                                scope.launch {
+                                    val stamp = nowStamp()
+                                    if (noteInput.isBlank()) {
+                                        roomStatus = noteEmptyLabel
+                                        logs.add("[$stamp] Note save skipped: empty")
+                                        return@launch
+                                    }
+                                    runCatching {
+                                        storage.saveLatestNote(noteInput)
+                                        storage.getLatestNote().orEmpty()
+                                    }.onSuccess { saved ->
+                                        latestNote = saved
+                                        roomStatus = latestNoteSavedLabel
+                                        logs.add("[$stamp] Latest note saved")
+                                        UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId latest note saved")
+                                    }.onFailure { error ->
+                                        roomStatus = getString(Res.string.status_note_save_error, error.message ?: "unknown")
+                                        logs.add("[$stamp] Note save error: ${error.message ?: "unknown"}")
+                                        UiTrace.logError("AuroraRenderSmokeScreen", error)
                                     }
                                 }
-                                .onFailure { error ->
-                                    sqlStatus = "Read error: ${error.message ?: "unknown"}"
-                                    logs.add("[${nowStamp()}] Room read error: ${error.message ?: "unknown"}")
-                                    UiTrace.logError("AuroraRenderSmokeScreen", error)
+                            },
+                            onReadNote = {
+                                scope.launch {
+                                    val stamp = nowStamp()
+                                    runCatching { storage.getLatestNote().orEmpty() }
+                                        .onSuccess { saved ->
+                                            latestNote = saved
+                                            roomStatus = if (saved.isBlank()) noLatestNoteLabel else latestNoteRestoredLabel
+                                            logs.add("[$stamp] Latest note restored")
+                                        }
+                                        .onFailure { error ->
+                                            roomStatus = getString(Res.string.status_note_read_error, error.message ?: "unknown")
+                                            logs.add("[$stamp] Note read error: ${error.message ?: "unknown"}")
+                                            UiTrace.logError("AuroraRenderSmokeScreen", error)
+                                        }
                                 }
-                        }
-                    },
-                    secondLabel = "Clear log",
-                    secondColor = Color(0xFFC92A2A),
-                    secondAction = {
-                        UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId log cleared")
-                        logs.clear()
-                        currentTime = nowStamp()
-                        logs.add("[${nowStamp()}] Log cleared")
-                    },
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                NotePanel(
-                    noteInput = noteInput,
-                    latestNote = latestNote,
-                    onNoteInputChange = { noteInput = it },
-                    onSaveNote = {
-                        scope.launch {
-                            val stamp = nowStamp()
-                            if (noteInput.isBlank()) {
-                                sqlStatus = "Note is empty"
-                                logs.add("[$stamp] Note save skipped: empty")
-                                return@launch
-                            }
-                            runCatching {
-                                storage.saveLatestNote(noteInput)
-                                storage.getLatestNote().orEmpty()
-                            }.onSuccess { saved ->
-                                latestNote = saved
-                                sqlStatus = "Latest note saved"
-                                logs.add("[$stamp] Latest note saved")
-                                UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId latest note saved")
-                            }.onFailure { error ->
-                                sqlStatus = "Note save error: ${error.message ?: "unknown"}"
-                                logs.add("[$stamp] Note save error: ${error.message ?: "unknown"}")
-                                UiTrace.logError("AuroraRenderSmokeScreen", error)
-                            }
-                        }
-                    },
-                    onReadNote = {
-                        scope.launch {
-                            val stamp = nowStamp()
-                            runCatching { storage.getLatestNote().orEmpty() }
-                                .onSuccess { saved ->
-                                    latestNote = saved
-                                    sqlStatus = if (saved.isBlank()) "No latest note" else "Latest note restored"
-                                    logs.add("[$stamp] Latest note restored")
-                                }
-                                .onFailure { error ->
-                                    sqlStatus = "Note read error: ${error.message ?: "unknown"}"
-                                    logs.add("[$stamp] Note read error: ${error.message ?: "unknown"}")
-                                    UiTrace.logError("AuroraRenderSmokeScreen", error)
-                                }
-                        }
-                    },
-                )
-                onOpenNormalDemo?.let { openNormalDemo ->
-                    Spacer(modifier = Modifier.height(12.dp))
-                    DiagnosticButton(
-                        label = "Open normal demo app",
-                        background = Color(0xFFF76707),
-                        onClick = {
-                            UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Open normal demo tapped")
-                            logs.add("[${nowStamp()}] Switching to normal demo app")
-                            openNormalDemo()
-                        },
-                    )
-                }
-                onOpenSuperSmoke?.let { openSuperSmoke ->
-                    Spacer(modifier = Modifier.height(12.dp))
-                    DiagnosticButton(
-                        label = "Back to super smoke",
-                        background = Color(0xFF5C7CFA),
-                        onClick = {
-                            UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Back to super smoke tapped")
-                            logs.add("[${nowStamp()}] Switching to super smoke")
-                            openSuperSmoke()
-                        },
-                    )
+                            },
+                        )
+                    }
+                    onOpenNormalDemo?.let { openNormalDemo ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DiagnosticButton(
+                            label = stringResource(Res.string.open_normal_demo_app),
+                            background = DemoColors.buttonOrange,
+                            onClick = {
+                                UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Open normal demo tapped")
+                                logs.add("[${nowStamp()}] Switching to normal demo app")
+                                openNormalDemo()
+                            },
+                        )
+                    }
+                    onOpenSuperSmoke?.let { openSuperSmoke ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DiagnosticButton(
+                            label = stringResource(Res.string.back_to_super_smoke),
+                            background = DemoColors.buttonIndigo,
+                            onClick = {
+                                UiTrace.log("AuroraRenderSmokeScreen", "startupId=$startupId Back to super smoke tapped")
+                                logs.add("[${nowStamp()}] Switching to super smoke")
+                                openSuperSmoke()
+                            },
+                        )
+                    }
                 }
             }
 
-            DiagnosticPanel(
-                title = "Post Preview",
-                background = Color(0xFF1F1F1F),
-            ) {
-                if (lastPost == null) {
-                    BasicText(
-                        text = "No post loaded yet.",
-                        style = TextStyle(color = Color.White, fontSize = 16.sp),
-                    )
-                } else {
-                    BasicText(
-                        text = lastPost!!.title,
-                        style = TextStyle(
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    BasicText(
-                        text = lastPost!!.body,
-                        style = TextStyle(color = Color(0xFFFFF3BF), fontSize = 16.sp),
-                    )
-                }
-            }
-
-            DiagnosticPanel(
-                title = "Platform Diagnostics",
-                background = Color(0xFF14213D),
-            ) {
-                platformDetails.forEach { detail ->
-                    BasicText(
-                        text = "• $detail",
-                        style = TextStyle(color = Color(0xFFD0EBFF), fontSize = 15.sp),
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                }
-            }
-
-            DiagnosticPanel(
-                title = "Runtime Log",
-                background = Color.Black,
-            ) {
-                if (logs.isEmpty()) {
-                    BasicText(
-                        text = "Log is empty.",
-                        style = TextStyle(color = Color(0xFFCED4DA), fontSize = 15.sp),
-                    )
-                } else {
-                    logs.takeLast(12).forEach { entry ->
+            if (page == AuroraDemoRoute.Network || page == AuroraDemoRoute.Database || onNavigate == null) {
+                DiagnosticPanel(
+                    title = stringResource(Res.string.post_preview_title),
+                    background = DemoColors.panelBlack,
+                ) {
+                    if (lastPost == null) {
                         BasicText(
-                            text = entry,
-                            style = TextStyle(color = Color(0xFF69DB7C), fontSize = 14.sp),
+                            text = stringResource(Res.string.post_empty),
+                            style = TextStyle(color = DemoColors.textPrimary).merge(typography.body),
+                        )
+                    } else {
+                        BasicText(
+                            text = lastPost!!.title,
+                            style = TextStyle(color = DemoColors.textPrimary).merge(typography.section.copy(fontSize = 20.sp, lineHeight = 24.sp)),
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        BasicText(
+                            text = lastPost!!.body,
+                            style = TextStyle(color = DemoColors.textPrimary).merge(typography.body),
+                        )
+                    }
+                }
+            }
+
+            if (page == AuroraDemoRoute.Database || onNavigate == null) {
+                DiagnosticPanel(
+                    title = stringResource(Res.string.platform_diagnostics_title),
+                    background = DemoColors.panelNavy,
+                ) {
+                    platformDetails.forEach { detail ->
+                        BasicText(
+                            text = "• $detail",
+                            style = TextStyle(color = DemoColors.textMuted).merge(typography.caption.copy(fontSize = 15.sp, lineHeight = 18.sp)),
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                     }
+                }
+            }
+
+            if (page == AuroraDemoRoute.Home || page == AuroraDemoRoute.Database || onNavigate == null) {
+                DiagnosticPanel(
+                    title = stringResource(Res.string.runtime_log_title),
+                    background = DemoColors.panelBlack,
+                ) {
+                    if (logs.isEmpty()) {
+                        BasicText(
+                            text = stringResource(Res.string.log_empty),
+                            style = TextStyle(color = DemoColors.logEmpty).merge(typography.caption.copy(fontSize = 15.sp, lineHeight = 18.sp)),
+                        )
+                    } else {
+                        logs.takeLast(12).forEach { entry ->
+                            BasicText(
+                                text = entry,
+                                style = TextStyle(color = DemoColors.logText).merge(typography.caption),
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private enum class DrawableExperimentCase(
+    val key: String,
+) {
+    SvgPainter("svg_painter"),
+    XmlMinPainter("xml_min_painter"),
+    XmlTwoPathsPainter("xml_two_paths_painter"),
+    XmlStrokePainter("xml_stroke_painter"),
+    XmlOriginalPainter("xml_original_painter"),
+    XmlMinVector("xml_min_vector"),
+    XmlTwoPathsVector("xml_two_paths_vector"),
+    XmlStrokeVector("xml_stroke_vector"),
+    XmlOriginalVector("xml_original_vector"),
+    ;
+
+    companion object {
+        fun fromKey(value: String?): DrawableExperimentCase? = entries.firstOrNull { it.key == value }
+    }
+}
+
+@Composable
+fun DrawableExperimentScreen(
+    startupId: String,
+    initialCaseKey: String?,
+    onBack: () -> Unit,
+) {
+    val typography = demoTypography()
+    var selectedCase by remember(initialCaseKey) { mutableStateOf(DrawableExperimentCase.fromKey(initialCaseKey)) }
+
+    LaunchedEffect(selectedCase) {
+        selectedCase?.let {
+            UiTrace.log("DrawableExperimentScreen", "startupId=$startupId loading drawable case=${it.key}")
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DemoColors.superSmokeBackground),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            BasicText(
+                text = stringResource(Res.string.drawable_experiments_title),
+                style = TextStyle(color = DemoColors.textPrimary).merge(typography.hero.copy(fontSize = 28.sp, lineHeight = 32.sp)),
+            )
+            BasicText(
+                text = stringResource(Res.string.drawable_experiments_subtitle),
+                style = TextStyle(color = DemoColors.textAccent).merge(typography.subtitle.copy(fontSize = 18.sp, lineHeight = 22.sp)),
+            )
+            BasicText(
+                text = stringResource(Res.string.drawable_experiments_startup, startupId),
+                style = TextStyle(color = DemoColors.textMuted).merge(typography.caption),
+            )
+            BasicText(
+                text = stringResource(Res.string.drawable_experiments_mode, initialCaseKey ?: "manual"),
+                style = TextStyle(color = DemoColors.textSupport).merge(typography.caption),
+            )
+
+            DiagnosticPanel(
+                title = stringResource(Res.string.drawable_experiments_cases_title),
+                background = DemoColors.panelNavigation,
+            ) {
+                DrawableExperimentCase.entries.forEach { candidate ->
+                    DiagnosticButton(
+                        label = candidate.key,
+                        background = if (selectedCase == candidate) DemoColors.buttonIndigo else DemoColors.buttonMuted,
+                        onClick = { selectedCase = candidate },
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+                DiagnosticButton(
+                    label = stringResource(Res.string.back_to_super_smoke),
+                    background = DemoColors.buttonOrange,
+                    onClick = onBack,
+                )
+            }
+
+            DiagnosticPanel(
+                title = stringResource(Res.string.drawable_experiments_preview_title),
+                background = DemoColors.panelPurple,
+            ) {
+                BasicText(
+                    text = selectedCase?.key ?: stringResource(Res.string.drawable_experiments_no_case),
+                    style = TextStyle(color = DemoColors.textPrimary).merge(typography.body),
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .size(140.dp)
+                        .background(Color(0xFF0B1F33), RoundedCornerShape(20.dp))
+                        .border(2.dp, DemoColors.statusYellow, RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    selectedCase?.let { DangerousDrawablePreview(it) } ?: SafePlaceholderBadge(modifier = Modifier.size(92.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DangerousDrawablePreview(case: DrawableExperimentCase) {
+    when (case) {
+        DrawableExperimentCase.SvgPainter -> {
+            Image(
+                painter = painterResource(Res.drawable.ic_demo_badge),
+                contentDescription = case.key,
+                modifier = Modifier.size(92.dp),
+            )
+        }
+
+        DrawableExperimentCase.XmlMinPainter -> {
+            Image(
+                painter = painterResource(Res.drawable.ic_vector_min_square),
+                contentDescription = case.key,
+                modifier = Modifier.size(92.dp),
+            )
+        }
+
+        DrawableExperimentCase.XmlTwoPathsPainter -> {
+            Image(
+                painter = painterResource(Res.drawable.ic_vector_two_paths),
+                contentDescription = case.key,
+                modifier = Modifier.size(92.dp),
+            )
+        }
+
+        DrawableExperimentCase.XmlStrokePainter -> {
+            Image(
+                painter = painterResource(Res.drawable.ic_vector_stroke_cross),
+                contentDescription = case.key,
+                modifier = Modifier.size(92.dp),
+            )
+        }
+
+        DrawableExperimentCase.XmlOriginalPainter -> {
+            Image(
+                painter = painterResource(Res.drawable.ic_vector_original_badge),
+                contentDescription = case.key,
+                modifier = Modifier.size(92.dp),
+            )
+        }
+
+        DrawableExperimentCase.XmlMinVector -> {
+            Image(
+                painter = rememberVectorPainter(vectorResource(Res.drawable.ic_vector_min_square)),
+                contentDescription = case.key,
+                modifier = Modifier.size(92.dp),
+            )
+        }
+
+        DrawableExperimentCase.XmlTwoPathsVector -> {
+            Image(
+                painter = rememberVectorPainter(vectorResource(Res.drawable.ic_vector_two_paths)),
+                contentDescription = case.key,
+                modifier = Modifier.size(92.dp),
+            )
+        }
+
+        DrawableExperimentCase.XmlStrokeVector -> {
+            Image(
+                painter = rememberVectorPainter(vectorResource(Res.drawable.ic_vector_stroke_cross)),
+                contentDescription = case.key,
+                modifier = Modifier.size(92.dp),
+            )
+        }
+
+        DrawableExperimentCase.XmlOriginalVector -> {
+            Image(
+                painter = rememberVectorPainter(vectorResource(Res.drawable.ic_vector_original_badge)),
+                contentDescription = case.key,
+                modifier = Modifier.size(92.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SafePlaceholderBadge(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .background(Color.Green, RoundedCornerShape(18.dp))
+            .border(2.dp, Color.White, RoundedCornerShape(18.dp)),
+    )
+}
+
+@Composable
+private fun routeLabel(route: AuroraDemoRoute): String = when (route) {
+    AuroraDemoRoute.Home -> appString(AppText.NavHome)
+    AuroraDemoRoute.Network -> appString(AppText.NavNetwork)
+    AuroraDemoRoute.Database -> appString(AppText.NavDatabase)
+}
+
+@Composable
+private fun NavigationTabs(
+    currentPage: AuroraDemoRoute,
+    onNavigate: (AuroraDemoRoute) -> Unit,
+) {
+    DiagnosticPanel(
+        title = stringResource(Res.string.navigation_title),
+        background = DemoColors.panelNavigation,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            AuroraDemoRoute.entries.forEach { route ->
+                Box(modifier = Modifier.weight(1f)) {
+                    DiagnosticButton(
+                        label = routeLabel(route),
+                        background = if (route == currentPage) DemoColors.buttonIndigo else DemoColors.buttonMuted,
+                        onClick = { onNavigate(route) },
+                    )
                 }
             }
         }
@@ -619,6 +876,7 @@ private fun DiagnosticPanel(
     background: Color,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val typography = demoTypography()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -629,11 +887,7 @@ private fun DiagnosticPanel(
     ) {
         BasicText(
             text = title,
-            style = TextStyle(
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            ),
+            style = TextStyle(color = DemoColors.textPrimary).merge(typography.section),
         )
         content()
     }
@@ -645,6 +899,7 @@ private fun StatusRow(
     value: String,
     accent: Color,
 ) {
+    val typography = demoTypography()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -654,20 +909,12 @@ private fun StatusRow(
     ) {
         BasicText(
             text = label,
-            style = TextStyle(
-                color = accent,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-            ),
+            style = TextStyle(color = accent).merge(typography.caption.copy(fontWeight = FontWeight.Bold, fontSize = 13.sp, lineHeight = 16.sp)),
         )
         Spacer(modifier = Modifier.height(4.dp))
         BasicText(
             text = value,
-            style = TextStyle(
-                color = Color.White,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
-            ),
+            style = TextStyle(color = DemoColors.textPrimary).merge(typography.body.copy(fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 20.sp)),
         )
     }
 }
@@ -708,6 +955,7 @@ private fun DiagnosticButton(
     background: Color,
     onClick: () -> Unit,
 ) {
+    val typography = demoTypography()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -719,11 +967,7 @@ private fun DiagnosticButton(
     ) {
         BasicText(
             text = label,
-            style = TextStyle(
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-            ),
+            style = TextStyle(color = Color.White).merge(typography.button),
         )
     }
 }
@@ -747,9 +991,10 @@ private fun NotePanel(
     onSaveNote: () -> Unit,
     onReadNote: () -> Unit,
 ) {
+    val typography = demoTypography()
     DiagnosticPanel(
-        title = "Latest Note",
-        background = Color(0xFF3A1C0D),
+        title = stringResource(Res.string.latest_note_title),
+        background = DemoColors.panelBrown,
     ) {
         BasicTextField(
             value = noteInput,
@@ -760,30 +1005,30 @@ private fun NotePanel(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF5C2D12), RoundedCornerShape(14.dp))
-                .border(1.dp, Color(0xFFFFC078), RoundedCornerShape(14.dp))
+                .background(DemoColors.inputBackground, RoundedCornerShape(14.dp))
+                .border(1.dp, DemoColors.inputBorder, RoundedCornerShape(14.dp))
                 .padding(14.dp),
             decorationBox = { innerTextField ->
                 if (noteInput.isBlank()) {
                     BasicText(
-                        text = "Type text and save it to Room",
-                        style = TextStyle(color = Color(0xFFFFE8CC), fontSize = 15.sp),
+                        text = stringResource(Res.string.latest_note_placeholder),
+                        style = TextStyle(color = DemoColors.inputPlaceholder).merge(typography.caption.copy(fontSize = 15.sp, lineHeight = 18.sp)),
                     )
                 }
                 innerTextField()
             },
         )
         ButtonRow(
-            firstLabel = "Save latest text",
-            firstColor = Color(0xFF2B8A3E),
+            firstLabel = stringResource(Res.string.save_latest_text),
+            firstColor = DemoColors.buttonGreen,
             firstAction = onSaveNote,
-            secondLabel = "Read latest text",
-            secondColor = Color(0xFF5C7CFA),
+            secondLabel = stringResource(Res.string.read_latest_text),
+            secondColor = DemoColors.buttonIndigo,
             secondAction = onReadNote,
         )
         BasicText(
-            text = "Latest saved text: ${latestNote.ifBlank { "-" }}",
-            style = TextStyle(color = Color.White, fontSize = 16.sp),
+            text = stringResource(Res.string.latest_note_value, latestNote.ifBlank { "-" }),
+            style = TextStyle(color = DemoColors.textPrimary).merge(typography.body),
         )
     }
 }

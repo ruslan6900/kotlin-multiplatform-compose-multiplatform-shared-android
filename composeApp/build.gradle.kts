@@ -1,5 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+version = "0.0.2"
+
 plugins {
     kotlin("multiplatform") version "2.3.20"
     id("org.jetbrains.kotlin.plugin.compose") version "2.3.20"
@@ -43,6 +45,7 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.ui)
                 implementation(compose.components.resources)
+                implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.2")
                 implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.9.4")
                 implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
                 implementation(project.dependencies.platform("io.insert-koin:koin-bom:4.2.0"))
@@ -103,7 +106,7 @@ android {
         minSdk = 28
         targetSdk = 36
         versionCode = 1
-        versionName = "0.0.1"
+        versionName = "0.0.2"
     }
 
     buildFeatures {

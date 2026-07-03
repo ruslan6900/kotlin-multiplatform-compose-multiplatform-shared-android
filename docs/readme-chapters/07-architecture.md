@@ -87,6 +87,8 @@ Ktor / Room / platform actuals
 Сюда входят:
 
 - `App()`;
+- root `NavHost` для `SuperSmoke -> RenderSmoke -> NormalDemo`;
+- nested `NavHost` для `Home -> Network -> Database`;
 - shared composable-экраны;
 - Aurora diagnostic composables;
 - screen state;
@@ -100,7 +102,8 @@ Ktor / Room / platform actuals
 
 - UI действительно шарится;
 - Android и Aurora используют один и тот же базовый экранный код;
-- общая логика отображения не дублируется по платформам.
+- общая логика отображения не дублируется по платформам;
+- переходы между экранами тоже не дублируются по платформам.
 
 ### Что есть внутри presentation layer
 
@@ -111,8 +114,17 @@ Ktor / Room / platform actuals
 - `DatabaseScreen`
 - диагностический Aurora dashboard
 - render smoke composables
-- navigation state
+- navigation graph
 - screen `ViewModel`
+
+Отдельно важно, что в этот же слой входит общий visual resource system:
+
+- `strings.xml` в `composeResources/values`;
+- shared font resources;
+- shared drawable resources;
+- общие color и typography tokens.
+
+То есть presentation layer здесь состоит не только из composable-функций, но и из общего набора UI-ресурсов, который используется всеми платформами.
 
 UI построен по state-driven модели:
 

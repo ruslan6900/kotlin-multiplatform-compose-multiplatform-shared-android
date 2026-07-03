@@ -35,6 +35,8 @@ actual fun createPostsStorage(): PostsStorage = AndroidRoomStorageHolder.storage
 
 actual fun shouldUseAuroraRenderSmokeTest(): Boolean = true
 
+actual fun configuredDrawableExperiment(): String? = null
+
 actual fun currentProcessId(): Long = Process.myPid().toLong()
 
 actual fun diagnosticLogPath(): String? = null

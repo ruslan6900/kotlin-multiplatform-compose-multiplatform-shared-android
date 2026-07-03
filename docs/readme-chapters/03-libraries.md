@@ -21,6 +21,7 @@
 - `compose.material3`
 - `compose.ui`
 - `compose.components.resources`
+- `org.jetbrains.androidx.navigation:navigation-compose`
 
 Что они дают:
 
@@ -28,9 +29,42 @@
 - общие `@Composable`-функции;
 - layout primitives;
 - Material3-компоненты;
-- общий слой ресурсов.
+- общий слой ресурсов;
+- общий `NavHost` и shared navigation graph.
 
-Именно благодаря этим зависимостям экраны `Home`, `Network`, `Database` могут жить в `commonMain`.
+Именно благодаря этим зависимостям экраны `Home`, `Network`, `Database` и корневой Aurora bootstrap flow живут в `commonMain`.
+
+### Общие ресурсы
+
+В проекте используется настоящий общий resource-layer через `Compose Resources`.
+
+Сейчас в `commonMain` вынесены:
+
+- строки из `composeApp/src/commonMain/composeResources/values/strings.xml`;
+- шрифты из `composeApp/src/commonMain/composeResources/font/`;
+- drawable-ресурсы из `composeApp/src/commonMain/composeResources/drawable/`.
+
+В shared UI это используется через:
+
+- `stringResource(Res.string...)`;
+- `Font(Res.font...)`;
+- `painterResource(Res.drawable...)`.
+
+Практически это означает, что:
+
+- Android, iOS, Desktop и Aurora читают один и тот же string catalog;
+- typography собирается из общих font resources;
+- диагностический badge и другие drawable-ресурсы тоже берутся из общего модуля;
+- для пользовательского текста больше не нужны platform-specific `AppStrings.*` реализации.
+
+При этом по drawable-форматам в PoC пока сохраняется практическое ограничение:
+
+- `SVG` не считается полностью беспроблемным общим форматом для Android;
+- `XML VectorDrawable` не считается полностью беспроблемным общим форматом для Aurora.
+
+Поэтому общий resource-layer для строк и шрифтов уже можно считать подтверждённым, а общий drawable-layer пока остаётся частично исследовательской зоной.
+
+Для Aurora это было важно отдельно проверить, потому что ресурсы должны были не только компилироваться на JVM/Android, но и реально доходить до `auroraArm64` и `auroraX64` pipeline.
 
 ### Koin
 

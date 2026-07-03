@@ -89,25 +89,48 @@ Aurora не исполняет `@Composable`-код напрямую "магич
 
 Именно поэтому для пользователя проекта это выглядит как "одни и те же composable-элементы работают и там, и там".
 
-## 5. Почему для этого не нужен Android Navigation
+## 5. Как здесь работает Compose Navigation
 
-Важно отдельно проговорить одну вещь: этот PoC не опирается на `androidx.navigation-compose`.
+Важно отдельно зафиксировать текущее состояние проекта: PoC уже использует настоящий `org.jetbrains.androidx.navigation:navigation-compose`, а не старый fallback на ручное переключение state.
 
-Навигация здесь сделана как shared state-driven переключение экранов.
+Навигация устроена в два уровня, и оба уровня живут в `commonMain`.
 
-Это значит:
+### Корневой `NavHost`
 
-- выбран текущий `AppScreen`;
-- UI в `commonMain` показывает нужный экран в зависимости от этого состояния;
-- переключение между экранами тоже происходит в shared-коде.
+В `App()` есть общий root graph, который переключает:
 
-Почему это важно:
+- `SuperSmoke`
+- `RenderSmoke`
+- `NormalDemo`
 
-- такая навигация не завязана на Android framework;
-- её проще перенести на Aurora;
-- это хороший способ доказать, что многосценарный UI может жить в общем модуле и без Android-only navigation stack.
+Это нужно для Aurora-friendly boot flow:
 
-То есть здесь общий не только внешний вид, но и сам способ перехода между экранами.
+- сначала можно открыть максимально безопасный экран;
+- затем diagnostic dashboard;
+- затем normal demo app.
+
+### Внутренний `NavHost`
+
+В `NormalDemoContent()` есть второй shared graph, который переключает страницы:
+
+- `Home`
+- `Network`
+- `Database`
+
+Именно через него сейчас ходит normal demo UI.
+
+### Почему это всё ещё кроссплатформенно
+
+Хотя библиотека называется `navigation-compose`, в этом проекте используется не Android framework navigation, а её KMP-совместимый Compose слой.
+
+Поэтому:
+
+- navigation graph описывается в `commonMain`;
+- route-ы объявлены в общем коде;
+- `rememberNavController()`, `NavHost`, `composable(...)` и `navigate(...)` используются из shared UI;
+- Android, Desktop и Aurora идут по одному и тому же navigation path.
+
+Практически это означает, что здесь общий не только внешний вид экранов, но и сам navigation mechanism между root flow и внутренними страницами.
 
 ## 6. Как Compose state и recomposition работают на Aurora
 

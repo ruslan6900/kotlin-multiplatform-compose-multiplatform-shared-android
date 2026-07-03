@@ -72,6 +72,9 @@ actual fun createPostsStorage(): PostsStorage = AuroraRoomStorageHolder.storage
 actual fun shouldUseAuroraRenderSmokeTest(): Boolean = true
 
 @OptIn(ExperimentalForeignApi::class)
+actual fun configuredDrawableExperiment(): String? = getenv("AURORA_DRAWABLE_EXPERIMENT")?.toKString()
+
+@OptIn(ExperimentalForeignApi::class)
 actual fun currentProcessId(): Long = getpid().toLong()
 
 actual fun diagnosticLogPath(): String? = auroraLogPath

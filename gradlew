@@ -117,17 +117,37 @@ esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
-# Select the JDK automatically so the same user-facing commands work for both variants:
-# - Android/main remains stable on Java 17
-# - Aurora local plugins require Java 21
+# Optional JDK auto-selection for local convenience:
+# - aurora builds can use AURORA_JAVA_HOME when exported
+# - main/android builds can use MAIN_JAVA_HOME when exported
+# If neither is set, the wrapper falls back to JAVA_HOME or plain `java` from PATH.
 case " $* " in
   *" -PbuildVariant=aurora "*)
-    JAVA_HOME="/Users/ruslaneremeev/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.7/Contents/Home"
-    export JAVA_HOME
+    if [ -n "${AURORA_JAVA_HOME:-}" ] ; then
+        JAVA_HOME="$AURORA_JAVA_HOME"
+        export JAVA_HOME
+    fi
     ;;
   *)
-    JAVA_HOME="/Users/ruslaneremeev/Library/Java/JavaVirtualMachines/liberica-17.0.6"
-    export JAVA_HOME
+    if [ -n "${MAIN_JAVA_HOME:-}" ] ; then
+        JAVA_HOME="$MAIN_JAVA_HOME"
+        export JAVA_HOME
+    elif "$darwin" ; then
+        for studio_jbr in \
+            "/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+            "$HOME/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+        do
+            if [ -x "$studio_jbr/bin/java" ] ; then
+                case "${JAVA_HOME:-}" in
+                  *graalvm* | *GraalVM* | "")
+                    JAVA_HOME="$studio_jbr"
+                    export JAVA_HOME
+                    break
+                    ;;
+                esac
+            fi
+        done
+    fi
     ;;
 esac
 

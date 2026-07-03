@@ -40,6 +40,8 @@ actual fun createPostsStorage(): PostsStorage = DesktopRoomStorageHolder.storage
 
 actual fun shouldUseAuroraRenderSmokeTest(): Boolean = true
 
+actual fun configuredDrawableExperiment(): String? = null
+
 actual fun currentProcessId(): Long = ProcessHandle.current().pid()
 
 actual fun diagnosticLogPath(): String? = null
