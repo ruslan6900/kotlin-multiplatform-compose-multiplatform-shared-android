@@ -23,7 +23,9 @@ fun NormalDemoContent(
     ) {
         AuroraDemoRoute.entries.forEach { route ->
             composable(route.route) {
-                AuroraRenderSmokeScreen(
+                if (route == AuroraDemoRoute.FileManager) {
+                    FileManagerScreen()
+                } else AuroraRenderSmokeScreen(
                     startupId = startupId,
                     lifecycleSummary = lifecycleSummary,
                     modeTitle = modeTitle,

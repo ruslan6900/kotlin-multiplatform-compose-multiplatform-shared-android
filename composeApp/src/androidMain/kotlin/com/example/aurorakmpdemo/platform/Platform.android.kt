@@ -12,6 +12,8 @@ import kotlinx.coroutines.Dispatchers
 
 actual fun platformName(): String = "Android"
 
+actual fun shouldUseBundledDemoFonts(): Boolean = true
+
 actual fun httpClientEngineFactory(): HttpClientEngineFactory<*> = OkHttp
 
 private object AndroidRoomStorageHolder {

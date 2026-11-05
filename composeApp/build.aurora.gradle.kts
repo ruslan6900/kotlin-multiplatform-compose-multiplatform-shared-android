@@ -6,7 +6,7 @@ plugins {
     id("androidx.room") version "2.8.4"
     id("ru.auroraos.kmp.aurora-build") version "0.0.1"
     id("ru.auroraos.kmp.aurora-devices") version "0.0.1"
-    id("org.jetbrains.compose") version "0.0.4-aurora"
+    id("org.jetbrains.compose") version "0.0.5-aurora"
 }
 
 version = "0.0.2"
@@ -79,24 +79,15 @@ tasks.register<Exec>("killAuroraDemoOnEmulator") {
     notCompatibleWithConfigurationCache("Uses local SSH exec calls to kill emulator-side app processes.")
     isIgnoreExitValue = true
     commandLine(
-        "bash",
-        "-lc",
-        """
-        ssh \
-          -o StrictHostKeyChecking=no \
-          -o UserKnownHostsFile=/dev/null \
-          -o LogLevel=ERROR \
-          -p $auroraPort \
-          -i $auroraSshKey \
-          $auroraUser@$auroraHost \
-          '
-          ps aux | grep -E "(/usr/bin/$auroraAppId|private-bin=$auroraAppId)" | grep -v grep | awk '"'"'{print ${'$'}2}'"'"' | xargs -r kill -9 2>/dev/null || true
-          ps aux | grep -F "runtime-manager-tool Control startDebug $auroraAppId" | grep -v grep | awk '"'"'{print ${'$'}2}'"'"' | xargs -r kill -9 2>/dev/null || true
-          sleep 1
-          ps aux | grep -i "$auroraAppId" | grep -v grep || true
-          exit 0
-          '
-        """.trimIndent(),
+        "ssh",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "-o", "LogLevel=ERROR",
+        "-p", auroraPort,
+        "-i", auroraSshKey,
+        "$auroraUser@$auroraHost",
+        "sh", "-c",
+        "cd /home/$auroraUser || exit 0; pkill -9 -f '$auroraAppId' 2>/dev/null || true; sleep 1",
     )
 }
 
@@ -145,7 +136,8 @@ tasks.register<Exec>("runDebugOnEmulatorNoSandboxStreaming") {
 }
 
 tasks.matching { it.name == "installDebugToEmulator" }.configureEach {
-    dependsOn("buildDebugPackageAuroraArm64", "buildDebugPackageAuroraX64")
+    // The connected Aurora emulator is aarch64; do not package x86_64 on each run.
+    dependsOn("buildDebugPackageAuroraArm64")
 }
 
 tasks.matching {

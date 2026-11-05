@@ -8,6 +8,7 @@ enum class AppText {
     NavHome,
     NavNetwork,
     NavDatabase,
+    NavFileManager,
     HomeTitle,
     HomeSubtitle,
     NetworkTitle,
@@ -27,6 +28,7 @@ fun appString(text: AppText): String = when (text) {
     AppText.NavHome -> stringResource(Res.string.nav_home)
     AppText.NavNetwork -> stringResource(Res.string.nav_network)
     AppText.NavDatabase -> stringResource(Res.string.nav_database)
+    AppText.NavFileManager -> stringResource(Res.string.nav_file_manager)
     AppText.HomeTitle -> stringResource(Res.string.home_title)
     AppText.HomeSubtitle -> stringResource(Res.string.home_subtitle)
     AppText.NetworkTitle -> stringResource(Res.string.network_title)

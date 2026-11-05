@@ -24,6 +24,8 @@ expect fun diagnosticLogPath(): String?
 
 expect fun appendPlatformDiagnosticLog(message: String)
 
+expect fun shouldUseBundledDemoFonts(): Boolean
+
 expect class PlatformDiagnosticsProvider() {
     fun snapshot(): PlatformDiagnostics
 }

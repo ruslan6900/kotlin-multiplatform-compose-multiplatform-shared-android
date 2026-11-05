@@ -13,6 +13,8 @@ import kotlin.io.path.createDirectories
 
 actual fun platformName(): String = "Desktop JVM"
 
+actual fun shouldUseBundledDemoFonts(): Boolean = true
+
 actual fun httpClientEngineFactory(): HttpClientEngineFactory<*> = Java
 
 private val desktopRoomDirectory: Path by lazy {

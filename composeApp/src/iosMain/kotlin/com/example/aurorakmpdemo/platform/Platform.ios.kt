@@ -47,6 +47,8 @@ private object IosRoomStorageHolder {
 
 actual fun platformName(): String = "iOS"
 
+actual fun shouldUseBundledDemoFonts(): Boolean = true
+
 actual fun httpClientEngineFactory(): HttpClientEngineFactory<*> = Darwin
 
 actual fun createPostsStorage(): PostsStorage = IosRoomStorageHolder.storage

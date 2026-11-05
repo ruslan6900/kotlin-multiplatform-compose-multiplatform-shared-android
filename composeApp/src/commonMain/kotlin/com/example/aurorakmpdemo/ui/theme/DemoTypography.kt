@@ -5,6 +5,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.aurorakmpdemo.platform.shouldUseBundledDemoFonts
 import com.example.aurorakmpdemo.resources.*
 import org.jetbrains.compose.resources.Font
 
@@ -18,11 +19,16 @@ data class DemoTypography(
 )
 
 @Composable
-fun demoFontFamily(): FontFamily = FontFamily(
-    Font(Res.font.golos_text_regular, FontWeight.Normal),
-    Font(Res.font.golos_text_medium, FontWeight.Medium),
-    Font(Res.font.golos_text_bold, FontWeight.Bold),
-)
+fun demoFontFamily(): FontFamily =
+    if (shouldUseBundledDemoFonts()) {
+        FontFamily(
+            Font(Res.font.golos_text_regular, FontWeight.Normal),
+            Font(Res.font.golos_text_medium, FontWeight.Medium),
+            Font(Res.font.golos_text_bold, FontWeight.Bold),
+        )
+    } else {
+        FontFamily.Default
+    }
 
 @Composable
 fun demoTypography(): DemoTypography {

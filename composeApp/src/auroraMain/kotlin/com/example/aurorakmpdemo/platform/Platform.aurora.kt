@@ -33,6 +33,8 @@ private val auroraRoomDatabasePath: String by lazy { "$auroraRoomDirectory/posts
 
 actual fun platformName(): String = "Aurora OS"
 
+actual fun shouldUseBundledDemoFonts(): Boolean = true
+
 actual fun httpClientEngineFactory(): HttpClientEngineFactory<*> = Curl
 
 @OptIn(ExperimentalForeignApi::class)

@@ -72,6 +72,7 @@ enum class AuroraDemoRoute(
     Home("home"),
     Network("network"),
     Database("database"),
+    FileManager("files"),
 }
 
 @Composable
@@ -842,6 +843,7 @@ private fun routeLabel(route: AuroraDemoRoute): String = when (route) {
     AuroraDemoRoute.Home -> appString(AppText.NavHome)
     AuroraDemoRoute.Network -> appString(AppText.NavNetwork)
     AuroraDemoRoute.Database -> appString(AppText.NavDatabase)
+    AuroraDemoRoute.FileManager -> appString(AppText.NavFileManager)
 }
 
 @Composable

@@ -11,9 +11,11 @@ import com.example.aurorakmpdemo.platform.configuredDrawableExperiment
 import com.example.aurorakmpdemo.platform.shouldUseAuroraRenderSmokeTest
 import com.example.aurorakmpdemo.resources.*
 import com.example.aurorakmpdemo.ui.AuroraRenderSmokeScreen
+import com.example.aurorakmpdemo.ui.AuroraRootScreen
 import com.example.aurorakmpdemo.ui.AuroraStagedBootContainer
 import com.example.aurorakmpdemo.ui.AuroraSuperSmokeScreen
 import com.example.aurorakmpdemo.ui.DrawableExperimentScreen
+import com.example.aurorakmpdemo.ui.FileManagerScreen
 import com.example.aurorakmpdemo.ui.NormalDemoContent
 import com.example.aurorakmpdemo.ui.UiTrace
 import com.example.aurorakmpdemo.ui.theme.DemoColors
@@ -30,14 +32,28 @@ private enum class AppRoute(val route: String) {
 
 @Composable
 fun App() {
-    DemoTheme {
-        val useAuroraFriendlyBoot = shouldUseAuroraRenderSmokeTest()
-        val configuredDrawableExperiment = configuredDrawableExperiment()
-        val startRoute = if (useAuroraFriendlyBoot) {
-            AppRoute.SuperSmoke.route
-        } else {
-            AppRoute.NormalDemo.route
+    if (shouldUseAuroraRenderSmokeTest()) {
+        val startupId = remember {
+            "launch-${Clock.System.now().toEpochMilliseconds()}"
         }
+
+        UiTrace.log("App", "startupId=$startupId startRoute=aurora-root logPath=${UiTrace.currentLogPath()}")
+        remember {
+            if (AuroraFriendlyKoin.ensureStarted()) {
+                UiTrace.log("App", "Global Koin started for Aurora-friendly boot")
+            }
+            true
+        }
+        UiTrace.log("App", "Opening Aurora root with MaterialTheme and bundled fonts")
+        DemoTheme {
+            AuroraRootScreen()
+        }
+        return
+    }
+
+    DemoTheme {
+        val configuredDrawableExperiment = configuredDrawableExperiment()
+        val startRoute = AppRoute.NormalDemo.route
 
         val startupId = remember {
             "launch-${Clock.System.now().toEpochMilliseconds()}"
@@ -45,15 +61,6 @@ fun App() {
         val navController = rememberNavController()
 
         UiTrace.log("App", "startupId=$startupId startRoute=$startRoute logPath=${UiTrace.currentLogPath()}")
-
-        if (useAuroraFriendlyBoot) {
-            remember {
-                if (AuroraFriendlyKoin.ensureStarted()) {
-                    UiTrace.log("App", "Global Koin started for Aurora-friendly boot")
-                }
-                true
-            }
-        }
 
         NavHost(
             navController = navController,
