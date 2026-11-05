@@ -5,6 +5,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.example.aurorakmpdemo.data.PostsStorage
 import com.example.aurorakmpdemo.data.RoomPostsStorage
 import com.example.aurorakmpdemo.db.PostsRoomDatabase
+import com.example.aurorakmpdemo.db.postsMigration2To3
 import android.os.Process
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.engine.okhttp.OkHttp
@@ -16,8 +17,8 @@ actual fun shouldUseBundledDemoFonts(): Boolean = true
 
 actual fun httpClientEngineFactory(): HttpClientEngineFactory<*> = OkHttp
 
-private object AndroidRoomStorageHolder {
-    val storage: PostsStorage by lazy {
+private object AndroidRoomDatabaseHolder {
+    val database: PostsRoomDatabase by lazy {
         val context = AndroidAppContext.require()
         val databasePath = context.getDatabasePath("posts-room.db").absolutePath
         val database = Room
@@ -25,15 +26,18 @@ private object AndroidRoomStorageHolder {
                 context = context,
                 name = databasePath,
             )
+            .addMigrations(postsMigration2To3)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO)
             .build()
-        RoomPostsStorage(database.postsDao())
+        database
     }
 }
 
-actual fun createPostsStorage(): PostsStorage = AndroidRoomStorageHolder.storage
+actual fun createPostsDatabase(): PostsRoomDatabase = AndroidRoomDatabaseHolder.database
+
+actual fun createPostsStorage(): PostsStorage = RoomPostsStorage(createPostsDatabase().postsDao())
 
 actual fun shouldUseAuroraRenderSmokeTest(): Boolean = true
 
@@ -46,6 +50,10 @@ actual fun diagnosticLogPath(): String? = null
 actual fun appendPlatformDiagnosticLog(message: String) {
     println(message)
 }
+
+actual fun libraryChecksLogPath(): String? = null
+actual fun overwriteLibraryChecksLog(message: String) { println(message) }
+actual fun appendLibraryChecksLog(message: String) { println(message) }
 
 actual class PlatformDiagnosticsProvider actual constructor() {
     actual fun snapshot(): PlatformDiagnostics = PlatformDiagnostics(

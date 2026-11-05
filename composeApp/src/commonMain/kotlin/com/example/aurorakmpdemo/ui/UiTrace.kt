@@ -6,6 +6,9 @@ import androidx.compose.runtime.SideEffect
 import com.example.aurorakmpdemo.platform.appendPlatformDiagnosticLog
 import com.example.aurorakmpdemo.platform.currentProcessId
 import com.example.aurorakmpdemo.platform.diagnosticLogPath
+import com.example.aurorakmpdemo.platform.libraryChecksLogPath as platformLibraryChecksLogPath
+import com.example.aurorakmpdemo.platform.overwriteLibraryChecksLog
+import com.example.aurorakmpdemo.platform.appendLibraryChecksLog
 import kotlin.time.Clock
 
 object UiTrace {
@@ -20,6 +23,16 @@ object UiTrace {
     }
 
     fun currentLogPath(): String = diagnosticLogPath() ?: "console-only"
+
+    fun beginLibraryChecksLog() {
+        overwriteLibraryChecksLog("[${Clock.System.now()}][pid=${currentProcessId()}][LibraryChecks] BEGIN latest run")
+    }
+
+    fun appendLibraryChecks(message: String) {
+        appendLibraryChecksLog("[${Clock.System.now()}][pid=${currentProcessId()}][LibraryChecks] $message")
+    }
+
+    fun libraryChecksLogPath(): String = platformLibraryChecksLogPath() ?: "console-only"
 }
 
 @Composable

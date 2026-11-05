@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,7 +37,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.aurorakmpdemo.data.Post
+import com.example.aurorakmpdemo.data.KotlinLibraryChecks
+import com.example.aurorakmpdemo.data.LibraryCheckEvent
+import com.example.aurorakmpdemo.data.LibraryChecksRunner
+import com.example.aurorakmpdemo.data.LibraryChecksViewModel
 import com.example.aurorakmpdemo.data.PostsStorage
+import com.example.aurorakmpdemo.data.RoomVerificationRepository
+import com.example.aurorakmpdemo.db.PostsDao
+import com.example.aurorakmpdemo.db.PostsRoomDatabase
 import com.example.aurorakmpdemo.di.AuroraFriendlyKoin
 import com.example.aurorakmpdemo.resources.Res
 import com.example.aurorakmpdemo.resources.ic_demo_badge
@@ -49,6 +57,8 @@ import com.example.aurorakmpdemo.ui.theme.DemoColors
 import com.example.aurorakmpdemo.ui.theme.demoFontFamily
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 import org.koin.mp.KoinPlatform
 
 @Composable
@@ -112,6 +122,106 @@ fun AuroraDatabaseScreen(onBack: () -> Unit) {
         AuroraDiagnosticsPanel("Последнее прочитанное") {
             BasicText("Post #${savedPost?.id ?: "—"}: ${savedPost?.title ?: "нет записи"}", style = diagnosticsBodyStyle())
             BasicText("Заметка: ${savedNote ?: "нет записи"}", style = diagnosticsMutedStyle())
+        }
+    }
+}
+
+@Composable
+fun AuroraCompatibilityScreen(onBack: () -> Unit) {
+    val database: PostsRoomDatabase = koinInject()
+    val dao: PostsDao = koinInject()
+    val repository: RoomVerificationRepository = koinInject()
+    val runner: LibraryChecksRunner = koinInject()
+    val viewModel: LibraryChecksViewModel = koinViewModel()
+    val lastUiEvent by viewModel.lastUiEvent.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var status by remember { mutableStateOf("Нажмите «Запустить все проверки»") }
+    var persistedValue by remember { mutableStateOf("—") }
+    var checks by remember { mutableStateOf(KotlinLibraryChecks.run()) }
+    var runLog by remember { mutableStateOf<List<LibraryCheckEvent>>(emptyList()) }
+    var isRunning by remember { mutableStateOf(false) }
+
+    fun readPersistedValue() {
+        scope.launch {
+            runCatching { repository.read() }
+                .onSuccess { result ->
+                    persistedValue = result.note ?: "нет сохранённой записи"
+                    status = if (result.isPersisted) "Room прочитал запись, сохранённую ранее" else "База пуста — это нормально при первом запуске"
+                    UiTrace.log("Compatibility", "Room persisted=${result.isPersisted}")
+                }
+                .onFailure { error ->
+                    status = "Ошибка чтения: ${error.message ?: error::class.simpleName}"
+                    UiTrace.logError("Compatibility", error)
+                }
+        }
+    }
+
+    LaunchedEffect(Unit) { readPersistedValue() }
+    AuroraDiagnosticsLayout("Проверка библиотек", onBack) {
+        AuroraDiagnosticsPanel("Граф зависимостей") {
+            BasicText("Koin: ${if (AuroraFriendlyKoin.isStarted()) "запущен" else "не запущен"}", style = diagnosticsBodyStyle())
+            BasicText("AppDatabase: singleton внедрён через koinInject", style = diagnosticsBodyStyle())
+            BasicText("DAO: ${if (dao === database.postsDao()) "получен из AppDatabase" else "разрешён Koin"}", style = diagnosticsBodyStyle())
+            BasicText("Repository: RoomVerificationRepository зарегистрирован", style = diagnosticsBodyStyle())
+            BasicText("Koin ViewModel + lifecycle StateFlow: $lastUiEvent", style = diagnosticsMutedStyle())
+        }
+        AuroraDiagnosticsPanel("Room: запись → чтение → перезапуск") {
+            BasicText(status, style = diagnosticsMutedStyle())
+            BasicText("Последняя заметка: $persistedValue", style = diagnosticsBodyStyle())
+            AuroraDiagnosticsButton("Запустить проверку") {
+                scope.launch {
+                    runCatching { repository.saveAndRead("Проверка Koin + Room") }
+                        .onSuccess { result ->
+                            persistedValue = result.note ?: "—"
+                            status = if (result.isPersisted) "Запись сохранена и тут же прочитана через DAO" else "Запись не найдена"
+                            UiTrace.log("Compatibility", "Room write/read success timestamp=${result.timestamp}")
+                        }
+                        .onFailure { error ->
+                            status = "Ошибка записи: ${error.message ?: error::class.simpleName}"
+                            UiTrace.logError("Compatibility", error)
+                        }
+                }
+            }
+            AuroraDiagnosticsButton("Прочитать сохранённое") { readPersistedValue() }
+        }
+        AuroraDiagnosticsPanel("Полная последовательная проверка") {
+            BasicText("Операции идут строго одна за другой. Каждый результат сохраняется в журнал ниже и в ui-diagnostics.log.", style = diagnosticsMutedStyle())
+            BasicText("Последний прогон: ${UiTrace.libraryChecksLogPath()}", style = diagnosticsMutedStyle())
+            AuroraDiagnosticsButton("Запустить все проверки", enabled = !isRunning) {
+                scope.launch {
+                    isRunning = true
+                    status = "Выполняются проверки библиотек…"
+                    runLog = emptyList()
+                    UiTrace.beginLibraryChecksLog()
+                    UiTrace.appendLibraryChecks("START sequential library verification")
+                    viewModel.recordUiEvent("Проверка запущена")
+                    runner.run { event ->
+                        runLog = runLog + event
+                        viewModel.recordUiEvent("${event.area}: ${if (event.success) "OK" else "ERROR"}")
+                        val level = if (event.success) "OK" else "ERROR"
+                        UiTrace.log("LibraryChecks", "$level ${event.area}: ${event.detail}")
+                        UiTrace.appendLibraryChecks("$level ${event.area}: ${event.detail}")
+                    }
+                    checks = KotlinLibraryChecks.run()
+                    status = if (runLog.all { it.success }) "Все проверки завершились успешно" else "Есть ошибки — смотрите журнал ниже"
+                    viewModel.recordUiEvent(status)
+                    UiTrace.appendLibraryChecks("FINISH status=$status")
+                    isRunning = false
+                }
+            }
+        }
+        AuroraDiagnosticsPanel("Журнал операций") {
+            if (runLog.isEmpty()) {
+                BasicText("Журнал появится после запуска проверки.", style = diagnosticsMutedStyle())
+            } else {
+                runLog.forEachIndexed { index, event ->
+                    val mark = if (event.success) "✓" else "✕"
+                    BasicText("${index + 1}. $mark ${event.area}: ${event.detail}", style = if (event.success) diagnosticsMutedStyle() else diagnosticsBodyStyle().copy(color = Color(0xFFFF8A80)))
+                }
+            }
+        }
+        AuroraDiagnosticsPanel("Короткая Kotlin-проверка") {
+            checks.forEach { BasicText(it, style = diagnosticsMutedStyle()) }
         }
     }
 }

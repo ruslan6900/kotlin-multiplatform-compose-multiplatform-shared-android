@@ -93,18 +93,21 @@ tasks.register<Exec>("killAuroraDemoOnEmulator") {
 
 tasks.register<Exec>("runDebugOnEmulatorNoSandbox") {
     group = "Aurora Devices"
-    description = "Install Debug to Emulator and launch it with runtime-manager-tool --nosandbox --detach."
+    description = "Install Debug to Emulator and keep a streaming no-sandbox debug session alive while the app runs."
     dependsOn("killAuroraDemoOnEmulator", "installDebugToEmulator")
     notCompatibleWithConfigurationCache("Uses local SSH exec calls to launch the Aurora app outside the standard plugin flow.")
     commandLine(
         "ssh",
+        "-tt",
         "-o", "StrictHostKeyChecking=no",
         "-o", "UserKnownHostsFile=/dev/null",
         "-o", "LogLevel=ERROR",
         "-p", auroraPort,
         "-i", auroraSshKey,
         "$auroraUser@$auroraHost",
-        "runtime-manager-tool Control startDebug $auroraAppId --nosandbox --detach --output-to-console$auroraDrawableExperimentFlag",
+        // Aurora 5.2 stops a debug app when its runtime-manager session ends.
+        // A pseudo-TTY and a non-detached controller match the IDE debug path.
+        "runtime-manager-tool Control startDebug $auroraAppId --nosandbox --output-to-console$auroraDrawableExperimentFlag",
     )
 }
 
@@ -138,6 +141,11 @@ tasks.register<Exec>("runDebugOnEmulatorNoSandboxStreaming") {
 tasks.matching { it.name == "installDebugToEmulator" }.configureEach {
     // The connected Aurora emulator is aarch64; do not package x86_64 on each run.
     dependsOn("buildDebugPackageAuroraArm64")
+}
+
+tasks.matching { it.name == "buildDebugPackageAuroraArm64" }.configureEach {
+    // The packaging plugin copies composeApp.kexe as-is; link it after source edits.
+    dependsOn("linkDebugExecutableAuroraArm64")
 }
 
 tasks.matching {

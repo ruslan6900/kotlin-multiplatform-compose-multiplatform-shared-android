@@ -59,6 +59,9 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-io:1.9.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.9.1")
+                implementation("co.touchlab:stately-concurrent-collections:2.1.0")
                 implementation("androidx.room:room-runtime:2.8.4")
                 implementation("androidx.sqlite:sqlite-bundled:2.6.2")
             }

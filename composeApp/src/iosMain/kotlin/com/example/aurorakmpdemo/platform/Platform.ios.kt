@@ -5,6 +5,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.example.aurorakmpdemo.data.PostsStorage
 import com.example.aurorakmpdemo.data.RoomPostsStorage
 import com.example.aurorakmpdemo.db.PostsRoomDatabase
+import com.example.aurorakmpdemo.db.postsMigration2To3
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.coroutines.Dispatchers
@@ -32,16 +33,17 @@ private fun ensureDirectory(path: String) {
     }
 }
 
-private object IosRoomStorageHolder {
-    val storage: PostsStorage by lazy {
+private object IosRoomDatabaseHolder {
+    val database: PostsRoomDatabase by lazy {
         ensureDirectory(iosRoomDirectory)
         val database = Room
             .databaseBuilder<PostsRoomDatabase>(name = iosRoomDatabasePath)
+            .addMigrations(postsMigration2To3)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.Default)
             .build()
-        RoomPostsStorage(database.postsDao())
+        database
     }
 }
 
@@ -51,7 +53,9 @@ actual fun shouldUseBundledDemoFonts(): Boolean = true
 
 actual fun httpClientEngineFactory(): HttpClientEngineFactory<*> = Darwin
 
-actual fun createPostsStorage(): PostsStorage = IosRoomStorageHolder.storage
+actual fun createPostsDatabase(): PostsRoomDatabase = IosRoomDatabaseHolder.database
+
+actual fun createPostsStorage(): PostsStorage = RoomPostsStorage(createPostsDatabase().postsDao())
 
 actual fun shouldUseAuroraRenderSmokeTest(): Boolean = true
 
@@ -64,6 +68,10 @@ actual fun diagnosticLogPath(): String? = null
 actual fun appendPlatformDiagnosticLog(message: String) {
     println(message)
 }
+
+actual fun libraryChecksLogPath(): String? = null
+actual fun overwriteLibraryChecksLog(message: String) { println(message) }
+actual fun appendLibraryChecksLog(message: String) { println(message) }
 
 actual class PlatformDiagnosticsProvider actual constructor() {
     actual fun snapshot(): PlatformDiagnostics = PlatformDiagnostics(

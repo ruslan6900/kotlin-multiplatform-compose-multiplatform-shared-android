@@ -5,6 +5,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.example.aurorakmpdemo.data.PostsStorage
 import com.example.aurorakmpdemo.data.RoomPostsStorage
 import com.example.aurorakmpdemo.db.PostsRoomDatabase
+import com.example.aurorakmpdemo.db.postsMigration2To3
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.engine.curl.Curl
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,11 @@ private var launchCount = 0
 private val auroraLogPath: String by lazy {
     val home = getenv("HOME")?.toKString() ?: "."
     "$home/.local/share/com.example/aurorakmpdemo/ui-diagnostics.log"
+}
+@OptIn(ExperimentalForeignApi::class)
+private val auroraLibraryChecksLogPath: String by lazy {
+    val home = getenv("HOME")?.toKString() ?: "."
+    "$home/.local/share/com.example/aurorakmpdemo/library-checks.log"
 }
 @OptIn(ExperimentalForeignApi::class)
 private val auroraRoomDirectory: String by lazy {
@@ -54,22 +60,30 @@ private fun ensureDirectory(path: String) {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private object AuroraRoomStorageHolder {
-    val storage: PostsStorage by lazy {
+private fun ensureAuroraLogDirectory() {
+    ensureDirectory(auroraLogPath.substringBeforeLast('/', missingDelimiterValue = "."))
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private object AuroraRoomDatabaseHolder {
+    val database: PostsRoomDatabase by lazy {
         ensureDirectory(auroraRoomDirectory)
         appendPlatformDiagnosticLog("[AuroraRoomStorageHolder] databaseDir=$auroraRoomDirectory")
         appendPlatformDiagnosticLog("[AuroraRoomStorageHolder] databasePath=$auroraRoomDatabasePath")
         val database = Room
             .databaseBuilder<PostsRoomDatabase>(name = auroraRoomDatabasePath)
+            .addMigrations(postsMigration2To3)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.Default)
             .build()
-        RoomPostsStorage(database.postsDao())
+        database
     }
 }
 
-actual fun createPostsStorage(): PostsStorage = AuroraRoomStorageHolder.storage
+actual fun createPostsDatabase(): PostsRoomDatabase = AuroraRoomDatabaseHolder.database
+
+actual fun createPostsStorage(): PostsStorage = RoomPostsStorage(createPostsDatabase().postsDao())
 
 actual fun shouldUseAuroraRenderSmokeTest(): Boolean = true
 
@@ -83,12 +97,29 @@ actual fun diagnosticLogPath(): String? = auroraLogPath
 
 @OptIn(ExperimentalForeignApi::class)
 actual fun appendPlatformDiagnosticLog(message: String) {
+    ensureAuroraLogDirectory()
     val file = fopen(auroraLogPath, "a") ?: return
     try {
         fprintf(file, "%s\n", message)
     } finally {
         fclose(file)
     }
+}
+
+actual fun libraryChecksLogPath(): String? = auroraLibraryChecksLogPath
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun overwriteLibraryChecksLog(message: String) {
+    ensureAuroraLogDirectory()
+    val file = fopen(auroraLibraryChecksLogPath, "w") ?: return
+    try { fprintf(file, "%s\n", message) } finally { fclose(file) }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun appendLibraryChecksLog(message: String) {
+    ensureAuroraLogDirectory()
+    val file = fopen(auroraLibraryChecksLogPath, "a") ?: return
+    try { fprintf(file, "%s\n", message) } finally { fclose(file) }
 }
 
 actual class PlatformDiagnosticsProvider actual constructor() {
