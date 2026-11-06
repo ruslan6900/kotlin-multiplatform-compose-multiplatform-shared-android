@@ -1,0 +1,12 @@
+[Unit]
+Description=Aurora KMP demo restricted ConnMan VPN bridge
+After=dbus.service connman-vpn.service
+
+[Service]
+Type=dbus
+BusName=com.example.aurorakmpdemo.VpnBridge
+ExecStart=/usr/libexec/com.example.aurorakmpdemo-vpn-bridge
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

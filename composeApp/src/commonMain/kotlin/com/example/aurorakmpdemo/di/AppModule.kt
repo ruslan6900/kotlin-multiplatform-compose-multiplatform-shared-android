@@ -8,6 +8,8 @@ import com.example.aurorakmpdemo.data.LibraryCheckRequest
 import com.example.aurorakmpdemo.data.LibraryChecksRunner
 import com.example.aurorakmpdemo.data.LibraryChecksViewModel
 import com.example.aurorakmpdemo.data.buildHttpClient
+import com.example.aurorakmpdemo.data.createPlatformVpnController
+import com.example.aurorakmpdemo.data.VpnController
 import com.example.aurorakmpdemo.db.PostsRoomDatabase
 import com.example.aurorakmpdemo.platform.PlatformDiagnosticsProvider
 import com.example.aurorakmpdemo.platform.createPostsDatabase
@@ -24,10 +26,11 @@ private fun libraryChecksModule() = module {
 
 fun appModule() = module {
     includes(libraryChecksModule())
-    // Same shape as the Continent graph: database -> DAO -> repository.
+    // Typical dependency graph: database -> DAO -> repository.
     single<PostsRoomDatabase> { createPostsDatabase() }
     single { get<PostsRoomDatabase>().postsDao() }
     single<PostsStorage> { RoomPostsStorage(get()) }
+    single<VpnController> { createPlatformVpnController() }
     single { PostsRepository(get(), get()) }
     single { RoomVerificationRepository(get()) }
     single { PlatformDiagnosticsProvider() }

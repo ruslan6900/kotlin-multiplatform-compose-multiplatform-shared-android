@@ -2,13 +2,13 @@
 
 pluginManagement {
     repositories {
-        mavenLocal()
         val buildVariant = providers.gradleProperty("buildVariant").orNull
         val auroraMavenRepo = java.io.File(settings.rootDir, "work/aurora-maven-0.0.5")
             .takeIf { it.exists() }
         if (buildVariant == "aurora" && auroraMavenRepo != null) {
             maven(url = auroraMavenRepo.toURI())
         }
+        mavenLocal()
         gradlePluginPortal()
         mavenCentral()
         google {

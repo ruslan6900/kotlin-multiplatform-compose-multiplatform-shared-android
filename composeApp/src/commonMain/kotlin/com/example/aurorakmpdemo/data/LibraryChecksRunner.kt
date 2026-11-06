@@ -117,7 +117,7 @@ data class SerializationProbe(
     @Transient val runtimeOnly: String = "not-serialized",
 )
 
-/** Runtime verification of portable APIs used by Continent, with each step reported to the UI. */
+/** Runtime verification of portable APIs, with each step reported to the UI. */
 class LibraryChecksRunner(
     private val database: PostsRoomDatabase,
     private val dao: PostsDao,

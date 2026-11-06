@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.example.aurorakmpdemo.ui.theme.DemoColors
 
 private enum class AuroraRootPage(val route: String) {
-    Home("home"), Files("files"), Database("database"), Compatibility("libraries"), Resources("resources"), Images("images"), Fonts("fonts"),
+    Home("home"), Files("files"), Database("database"), Compatibility("libraries"), Vpn("vpn"), Resources("resources"), Images("images"), Fonts("fonts"),
 }
 
 /** Aurora navigation that uses no Compose string or drawable resources. */
@@ -46,6 +46,7 @@ fun AuroraRootScreen() {
         composable(AuroraRootPage.Files.route) { FileManagerScreen(onBack = ::backToHome) }
         composable(AuroraRootPage.Database.route) { AuroraDatabaseScreen(onBack = ::backToHome) }
         composable(AuroraRootPage.Compatibility.route) { AuroraCompatibilityScreen(onBack = ::backToHome) }
+        composable(AuroraRootPage.Vpn.route) { AuroraVpnSimulationScreen(onBack = ::backToHome) }
         composable(AuroraRootPage.Resources.route) {
             AuroraResourcesScreen(onBack = ::backToHome, onOpenImages = { open(AuroraRootPage.Images) }, onOpenFonts = { open(AuroraRootPage.Fonts) })
         }
@@ -65,6 +66,7 @@ private fun AuroraHome(onOpen: (AuroraRootPage) -> Unit) {
         AuroraRouteCard("Файловый менеджер", "Каталоги и операции с файлами", { onOpen(AuroraRootPage.Files) })
         AuroraRouteCard("База данных", "Проверка локального Room-хранилища", { onOpen(AuroraRootPage.Database) })
         AuroraRouteCard("Проверка библиотек", "Koin, Room и стандартный Kotlin API", { onOpen(AuroraRootPage.Compatibility) })
+        AuroraRouteCard("VPN-плагин", "ConnMan: тестовый профиль, подключение и подробный журнал", { onOpen(AuroraRootPage.Vpn) })
         AuroraRouteCard("Ресурсы", "Изображения и шрифты из composeResources", { onOpen(AuroraRootPage.Resources) })
     }
 }

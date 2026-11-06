@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,9 @@ import com.example.aurorakmpdemo.data.LibraryChecksRunner
 import com.example.aurorakmpdemo.data.LibraryChecksViewModel
 import com.example.aurorakmpdemo.data.PostsStorage
 import com.example.aurorakmpdemo.data.RoomVerificationRepository
+import com.example.aurorakmpdemo.data.VpnConnectionState
+import com.example.aurorakmpdemo.data.VpnController
+import com.example.aurorakmpdemo.data.VpnLogEntry
 import com.example.aurorakmpdemo.db.PostsDao
 import com.example.aurorakmpdemo.db.PostsRoomDatabase
 import com.example.aurorakmpdemo.di.AuroraFriendlyKoin
@@ -224,6 +228,90 @@ fun AuroraCompatibilityScreen(onBack: () -> Unit) {
             checks.forEach { BasicText(it, style = diagnosticsMutedStyle()) }
         }
     }
+}
+
+@Composable
+fun AuroraVpnSimulationScreen(onBack: () -> Unit) {
+    val controller: VpnController = koinInject()
+    val connectionState by controller.connectionState.collectAsState()
+    val logs by controller.logs.collectAsState()
+    val scope = rememberCoroutineScope()
+    var profileId by remember { mutableStateOf("aurora-kmp-test-profile") }
+    var status by remember { mutableStateOf("Готово создать и подключить тестовый профиль") }
+    var persistedLogSize by remember { mutableStateOf(0) }
+
+    LaunchedEffect(logs) {
+        if (logs.size < persistedLogSize) persistedLogSize = 0
+        logs.drop(persistedLogSize).forEach { entry ->
+            UiTrace.log("VpnSimulation", "${entry.level} ${entry.component}: ${entry.message}")
+        }
+        persistedLogSize = logs.size
+    }
+
+    fun launchOperation(name: String, operation: suspend () -> Result<Unit>) {
+        scope.launch {
+            status = "$name…"
+            operation()
+                .onSuccess { status = "$name: успешно" }
+                .onFailure { status = "$name: ${it.message ?: it::class.simpleName}" }
+        }
+    }
+
+    AuroraDiagnosticsLayout("VPN-плагин: ConnMan", onBack) {
+        AuroraDiagnosticsPanel("Режим работы") {
+            BasicText("Статус: ${connectionState.label}", style = diagnosticsBodyStyle())
+            BasicText(status, style = diagnosticsMutedStyle())
+            BasicText("Aurora: профиль создаётся через ConnMan/D-Bus, затем состояние подключения подтверждается опросом ConnMan.", style = diagnosticsMutedStyle())
+            BasicText("Тестовый провайдер использует только подсеть 198.51.100.0/24 и не меняет DNS или маршрут по умолчанию.", style = diagnosticsMutedStyle())
+        }
+        AuroraDiagnosticsPanel("Профиль и управление") {
+            BasicText("Идентификатор профиля", style = diagnosticsMutedStyle())
+            BasicTextField(
+                value = profileId,
+                onValueChange = { profileId = it },
+                textStyle = diagnosticsBodyStyle(),
+                modifier = Modifier.fillMaxWidth().background(DemoColors.normalDemoBackground, RoundedCornerShape(8.dp)).padding(10.dp),
+            )
+            AuroraDiagnosticsButton(
+                "Создать и включить тестовый VPN",
+                enabled = connectionState == VpnConnectionState.Disconnected && profileId.isNotBlank(),
+            ) {
+                launchOperation("Подключение") { controller.connect(profileId.trim()) }
+            }
+            AuroraDiagnosticsButton(
+                "Выключить тестовый VPN",
+                enabled = connectionState == VpnConnectionState.Connected,
+            ) {
+                launchOperation("Отключение") { controller.disconnect() }
+            }
+            AuroraDiagnosticsButton("Очистить журнал") {
+                controller.clearLogs()
+                status = "Журнал очищен"
+            }
+        }
+        AuroraDiagnosticsPanel("Подробный журнал (${logs.size}/120)") {
+            if (logs.isEmpty()) {
+                BasicText("Записей пока нет.", style = diagnosticsMutedStyle())
+            } else {
+                logs.forEachIndexed { index, entry ->
+                    VpnLogLine(index + 1, entry)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VpnLogLine(index: Int, entry: VpnLogEntry) {
+    val color = when (entry.level.name) {
+        "Error" -> Color(0xFFFF8A80)
+        "Warn" -> Color(0xFFFFD180)
+        else -> DemoColors.textMuted
+    }
+    BasicText(
+        "$index. [${entry.timestamp.substringAfter('T').substringBefore('Z')}] ${entry.level} ${entry.component}: ${entry.message}",
+        style = diagnosticsMutedStyle().copy(color = color),
+    )
 }
 
 private enum class AuroraImageCase(val label: String) {

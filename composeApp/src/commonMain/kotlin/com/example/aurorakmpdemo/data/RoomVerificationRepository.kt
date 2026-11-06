@@ -7,7 +7,7 @@ import kotlin.time.Clock
 
 /**
  * Small repository intentionally backed by a DAO directly.
- * It is a runnable example of the same dependency direction used by Continent:
+ * It is a runnable example of a typical dependency direction:
  * Room database -> DAO -> repository -> UI.
  */
 class RoomVerificationRepository(
