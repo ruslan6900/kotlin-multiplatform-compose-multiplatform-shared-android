@@ -1,6 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-version = "0.0.2"
+version = "0.0.3"
 
 plugins {
     kotlin("multiplatform") version "2.3.20"
@@ -109,7 +109,7 @@ android {
         minSdk = 28
         targetSdk = 36
         versionCode = 1
-        versionName = "0.0.2"
+        versionName = "0.0.3"
     }
 
     buildFeatures {

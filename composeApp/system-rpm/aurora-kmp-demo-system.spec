@@ -6,9 +6,9 @@ License:        BSD-3-Clause
 BuildArch:      aarch64
 Source0:        %{name}-%{version}.tar.bz2
 
-# This is deliberately a system-oriented spec: it owns the ConnMan plugin
-# path and its provider. A production RPM must be built with an Aurora
-# system/extended signing profile and pass the corresponding validator.
+# Этот spec намеренно системный: он владеет путём ConnMan plugin и его provider.
+# Production RPM должен собираться с Aurora system/extended signing profile и
+# проходить соответствующий validator.
 %global __provides_exclude_from ^%{_datadir}/%{name}/lib/.*$
 %global __requires_exclude ^(libmaliit-glib.*)$
 
@@ -23,6 +23,9 @@ Development-only combined KMP application and ConnMan split-tunnel VPN plugin.
 %install
 rm -rf %{buildroot}
 
+# Пути ниже — точки системной интеграции Aurora. Они находятся в одном custom
+# RPM: обычный пользовательский RPM не может безопасно владеть каталогом ConnMan
+# plugin, systemd unit или system D-Bus policy.
 install -D -m 0755 app/com.example.aurorakmpdemo %{buildroot}%{_bindir}/%{name}
 install -D -m 0755 vpn/com.example.aurorakmpdemo.test-route-vpn %{buildroot}%{_bindir}/com.example.aurorakmpdemo.test-route-vpn
 install -D -m 0644 vpn/aurora-test-route-proto-plugin.so %{buildroot}/usr/lib/connman/plugins-vpn/aurora-test-route-proto-plugin.so
@@ -33,9 +36,10 @@ install -D -m 0644 bridge/com.example.aurorakmpdemo.VpnBridge.conf %{buildroot}/
 
 mkdir -p %{buildroot}%{_datadir}/applications %{buildroot}%{_datadir}/icons %{buildroot}%{_datadir}/%{name}
 cp -a app/applications/. %{buildroot}%{_datadir}/applications/
-# The KMP packaging task creates the desktop entry without VPN because this
-# custom system RPM, not the ordinary application RPM, owns the ConnMan
-# integration.  Sailjail grants system-bus access from this declaration.
+# KMP packaging task создаёт desktop entry без VPN, потому что ConnMan-интеграцией
+# владеет этот custom system RPM, а не обычный RPM приложения. Sailjail читает
+# это объявление при sandbox-запуске; режим emulator без sandbox остаётся только
+# визуальным development-обходом.
 sed -i 's/^Permissions=.*/Permissions=Internet;UserDirs;VPN/' %{buildroot}%{_datadir}/applications/%{name}.desktop
 cp -a app/icons/. %{buildroot}%{_datadir}/icons/
 cp -a app/resources %{buildroot}%{_datadir}/%{name}/

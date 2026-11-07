@@ -12,9 +12,9 @@ plugins {
 version = "0.0.3"
 
 val auroraNavigationVersion = "9999.0.0-SNAPSHOT"
-// Installing ConnMan plugins and requesting VPN capability requires an
-// Extended-signed package. Keep developer/debug builds installable until such
-// a signing profile is supplied explicitly.
+// Для установки ConnMan plugin и запроса VPN capability нужен пакет с
+// extended-подписью. Development/debug-сборка остаётся устанавливаемой, пока
+// signing profile не будет передан явно.
 val includeSystemVpnPayload = providers.gradleProperty("aurora.systemVpnIntegration")
     .map(String::toBoolean)
     .getOrElse(false)
@@ -29,10 +29,10 @@ auroraBuild {
         name.set("Aurora KMP Demo")
         version.set(project.version.toString())
         description.set("Aurora Kotlin Multiplatform compatibility check.")
-        // The plugin's bundled development signing step currently produces RPMs
-        // whose payload digests do not verify. Build an unsigned, checksum-valid
-        // RPM here; release signing is performed explicitly with the project
-        // certificates after this task completes.
+        // Встроенный development-шаг подписи plugin сейчас создаёт RPM, у
+        // которого не проходит проверка digest payload. Здесь собирается
+        // неподписанный RPM с корректными контрольными суммами; release-подпись
+        // выполняется отдельно доверенным процессом после этой задачи.
         sign.set(false)
         icons.set(projectDir.toPath().resolve("icons"))
         libs3rdParty.set(listOf("maliit-glib"))
@@ -42,14 +42,14 @@ auroraBuild {
             if (includeSystemVpnPayload) add("VPN")
         })
         if (includeSystemVpnPayload) {
-            // The test VPN is deliberately split-tunnel only: it owns
-            // 198.51.100.0/24, never changes the default route or DNS, and its
-            // provider discards frames. This branch requires Extended signing.
+            // Test VPN намеренно работает только как split-tunnel: он обслуживает
+            // 198.51.100.0/24, не меняет default route и DNS, а provider
+            // отбрасывает кадры. Для этой ветки нужна extended-подпись.
             extraFiles {
                 from { arch -> projectDir.resolve("native-vpn/connman-test-plugin/build/${arch.key}/plugin/libaurora-test-route-proto-plugin.so") } into
                     "/usr/lib/connman/plugins-vpn/aurora-test-route-proto-plugin.so" mode "0755"
-                // Keep this path in sync with PROVIDER_PATH in
-                // split_tunnel_plugin.c. ConnMan launches the provider itself.
+                // Путь должен совпадать с PROVIDER_PATH из split_tunnel_plugin.c.
+                // ConnMan сам запускает provider.
                 from { arch -> projectDir.resolve("native-vpn/connman-test-plugin/build/${arch.key}/provider/com.example.aurorakmpdemo.test-route-vpn") } into
                     "/usr/bin/com.example.aurorakmpdemo.test-route-vpn" mode "0755"
                 from(projectDir.resolve("native-vpn/connman-test-plugin/provider/aurora-test-route.conf")) into
@@ -103,6 +103,8 @@ tasks.register<Delete>("purgeAuroraMacMetadata") {
     delete(fileTree(layout.buildDirectory) { include("**/.DS_Store") })
 }
 
+// Здесь только исходники. Созданные RPM, Makefile и бинарники находятся в
+// build/ или .rpmbuild/ и не должны попадать в Git как исходный код.
 val nativeVpnDirectory = projectDir.resolve("native-vpn/connman-test-plugin")
 val auroraSdkDirectory = file("${System.getProperty("user.home")}/AuroraOS/sdk/5.2.0.180")
 val systemVpnRpmDirectory = projectDir.resolve("system-rpm")
@@ -112,6 +114,7 @@ tasks.register<Exec>("buildNativeTestVpnProviderAuroraArm64") {
     description = "Builds the aarch64 ConnMan split-tunnel test plugin and its packet-sink provider."
     notCompatibleWithConfigurationCache("Invokes the Aurora SDK Docker build and recreates its generated qmake directory.")
     workingDir(nativeVpnDirectory.resolve("build/aarch64"))
+    // plugin реализует ABI ConnMan, provider — приёмник пакетов TUN, bridge — узкий D-Bus API.
     inputs.dir(nativeVpnDirectory.resolve("plugin"))
     inputs.dir(nativeVpnDirectory.resolve("provider"))
     inputs.file(nativeVpnDirectory.resolve("connman-test-plugin.pro"))
@@ -120,8 +123,8 @@ tasks.register<Exec>("buildNativeTestVpnProviderAuroraArm64") {
     outputs.file(nativeVpnDirectory.resolve("build/aarch64/plugin/libaurora-test-route-proto-plugin.so"))
     outputs.file(nativeVpnDirectory.resolve("build/aarch64/provider/aurora-test-route-provider"))
     outputs.file(nativeVpnDirectory.resolve("build/aarch64/bridge/com.example.aurorakmpdemo-vpn-bridge"))
-    // The Aurora qmake wrapper reuses generated Makefiles and can otherwise miss
-    // a C-source-only change inside its Docker build directory.
+    // Обёртка Aurora qmake переиспользует созданные Makefile и иначе может не
+    // заметить изменение только C-исходника внутри Docker build-директории.
     outputs.upToDateWhen { false }
     doFirst {
         delete(nativeVpnDirectory.resolve("build/aarch64/plugin"))
@@ -138,6 +141,8 @@ tasks.register<Exec>("buildNativeTestVpnProviderAuroraArm64") {
 tasks.register<Exec>("buildSystemVpnBundleAuroraArm64") {
     group = "Aurora VPN"
     description = "Builds a development-only combined KMP application + ConnMan VPN RPM using the custom system spec."
+    // Зависимости обеспечивают настоящую сборку одного RPM: до staging заново
+    // собираются KMP executable и все нативные VPN-компоненты.
     dependsOn("buildDebugPackageAuroraArm64", "buildNativeTestVpnProviderAuroraArm64")
     notCompatibleWithConfigurationCache("Stages KMP and native artifacts, then invokes rpmbuild in the Aurora SDK Docker image.")
     workingDir(systemVpnRpmDirectory)
@@ -185,8 +190,8 @@ tasks.register<Exec>("runDebugOnEmulatorNoSandbox") {
         "-p", auroraPort,
         "-i", auroraSshKey,
         "$auroraUser@$auroraHost",
-        // Aurora 5.2 stops a debug app when its runtime-manager session ends.
-        // A pseudo-TTY and a non-detached controller match the IDE debug path.
+        // Aurora 5.2 останавливает debug-приложение при завершении сессии
+        // runtime-manager. Псевдо-TTY и controller без detach соответствуют IDE-пути.
         "runtime-manager-tool Control startDebug $auroraAppId --nosandbox --output-to-console$auroraDrawableExperimentFlag",
     )
 }
@@ -219,12 +224,12 @@ tasks.register<Exec>("runDebugOnEmulatorNoSandboxStreaming") {
 }
 
 tasks.matching { it.name == "installDebugToEmulator" }.configureEach {
-    // The connected Aurora emulator is aarch64; do not package x86_64 on each run.
+    // Подключённый Aurora emulator имеет aarch64; x86_64 не упаковывается при каждом запуске.
     dependsOn("buildDebugPackageAuroraArm64")
 }
 
 tasks.matching { it.name == "buildDebugPackageAuroraArm64" }.configureEach {
-    // The packaging plugin copies composeApp.kexe as-is; link it after source edits.
+    // Packaging plugin копирует composeApp.kexe как есть; после изменения исходников его нужно перелинковать.
     dependsOn("linkDebugExecutableAuroraArm64", "buildNativeTestVpnProviderAuroraArm64")
 }
 
@@ -299,8 +304,8 @@ kotlin {
         val auroraMain by creating {
             dependsOn(commonMain)
             dependencies {
-                // Aurora's KMP D-Bus binding.  The real VPN adapter lives only
-                // in auroraMain; the shared UI keeps a portable controller API.
+                // KMP D-Bus binding Aurora. Реальный VPN-адаптер находится
+                // только в auroraMain; общий UI сохраняет переносимый API controller.
                 implementation("ru.auroraos.kmp:dbus-library:0.0.1")
             }
         }

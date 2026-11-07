@@ -42,7 +42,7 @@ import com.example.aurorakmpdemo.ui.theme.DemoColors
 
 private enum class PendingFileOperation { Copy, Move }
 
-/** A simple device file browser. It deliberately uses no Compose resources on Aurora. */
+/** Простой файловый браузер устройства. На Aurora он намеренно не использует Compose Resources. */
 @Composable
 fun FileManagerScreen(onBack: (() -> Unit)? = null) {
     val root = remember { fileManagerRoot() }

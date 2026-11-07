@@ -4,10 +4,10 @@ import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 
-/** Keeps existing test posts/notes when the library-check entities are introduced. */
+/** Сохраняет имеющиеся тестовые посты и заметки при добавлении сущностей проверки библиотек. */
 val postsMigration2To3 = object : Migration(2, 3) {
     override fun migrate(connection: SQLiteConnection) {
-        // v3 also added this index to the existing posts table; Room validates it strictly.
+        // В v3 к существующей таблице posts добавлен этот индекс; Room строго его проверяет.
         connection.execSQL("CREATE INDEX IF NOT EXISTS index_posts_userId ON posts(userId)")
         connection.execSQL(
             "CREATE TABLE IF NOT EXISTS library_probe (id INTEGER NOT NULL, title TEXT NOT NULL, stage TEXT NOT NULL, tags TEXT NOT NULL, createdAt INTEGER NOT NULL, PRIMARY KEY(id))",

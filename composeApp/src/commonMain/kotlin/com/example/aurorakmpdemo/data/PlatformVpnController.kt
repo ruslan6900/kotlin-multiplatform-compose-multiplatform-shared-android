@@ -1,4 +1,4 @@
 package com.example.aurorakmpdemo.data
 
-/** Selects the platform transport while preserving one Koin graph and one UI. */
+/** Выбирает платформенный транспорт, сохраняя единый граф Koin и общий UI. */
 expect fun createPlatformVpnController(): VpnController

@@ -127,7 +127,7 @@ interface PostsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLibraryProbeEvent(event: LibraryProbeEventEntity)
 
-    /** A real write transaction: either both rows are committed or neither is. */
+    /** Настоящая транзакция записи: фиксируются либо обе строки, либо ни одной. */
     @Transaction
     suspend fun insertLibraryProbeWithEvent(
         probe: LibraryProbeEntity,

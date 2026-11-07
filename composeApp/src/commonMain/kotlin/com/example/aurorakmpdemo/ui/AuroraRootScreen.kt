@@ -29,7 +29,7 @@ private enum class AuroraRootPage(val route: String) {
     Home("home"), Files("files"), Database("database"), Compatibility("libraries"), Vpn("vpn"), Resources("resources"), Images("images"), Fonts("fonts"),
 }
 
-/** Aurora navigation that uses no Compose string or drawable resources. */
+/** Навигация Aurora, не использующая строковые и drawable-ресурсы Compose. */
 @Composable
 fun AuroraRootScreen() {
     val navController = rememberNavController()

@@ -4,7 +4,7 @@ plugins {
     id("com.diffplug.spotless") version "8.4.0"
 }
 
-version = "0.0.2"
+version = "0.0.3"
 
 val buildVariant = providers.gradleProperty("buildVariant").orElse("main")
 

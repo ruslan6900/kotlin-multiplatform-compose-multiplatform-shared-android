@@ -26,7 +26,7 @@ private fun libraryChecksModule() = module {
 
 fun appModule() = module {
     includes(libraryChecksModule())
-    // Typical dependency graph: database -> DAO -> repository.
+    // Типовой граф зависимостей: database -> DAO -> repository.
     single<PostsRoomDatabase> { createPostsDatabase() }
     single { get<PostsRoomDatabase>().postsDao() }
     single<PostsStorage> { RoomPostsStorage(get()) }

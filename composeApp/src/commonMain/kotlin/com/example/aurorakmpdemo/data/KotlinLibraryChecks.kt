@@ -1,6 +1,6 @@
 package com.example.aurorakmpdemo.data
 
-/** Common Kotlin APIs exercised from the Aurora binary, without platform-specific code. */
+/** Общие Kotlin API, проверяемые Aurora-бинарником без платформенного кода. */
 object KotlinLibraryChecks {
     fun run(): List<String> {
         val stages = CheckStage.entries.map { it.name.lowercase() }

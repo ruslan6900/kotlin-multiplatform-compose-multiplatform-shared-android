@@ -15,6 +15,8 @@ native_vpn_dir="$WORKSPACE_DIR/composeApp/native-vpn/connman-test-plugin/build/a
 top_dir="$system_rpm_dir/.rpmbuild/aarch64"
 source_dir="$top_dir/SOURCES/$package_name-$package_version"
 
+# Завершаем работу до упаковки, а не создаём молча RPM без одного из трёх VPN
+# слоёв: ConnMan plugin, процесса provider или D-Bus bridge.
 for required in \
   "$normal_rpm_dir/$package_name" \
   "$normal_rpm_dir/applications/$package_name.desktop" \
@@ -24,6 +26,8 @@ for required in \
   [[ -f "$required" ]] || { echo "Required build artifact is absent: $required" >&2; exit 3; }
 done
 
+# Это воспроизводимый результат сборки. Каталог создаётся из исходников при
+# каждом запуске и намеренно исключён из контроля версий.
 rm -rf "$top_dir"
 mkdir -p "$top_dir"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS} \
   "$source_dir/app" "$source_dir/vpn" "$source_dir/bridge"
@@ -40,10 +44,14 @@ cp "$native_vpn_dir/bridge/com.example.aurorakmpdemo-vpn-bridge" "$source_dir/br
 cp "$WORKSPACE_DIR/composeApp/native-vpn/connman-test-plugin/bridge/com.example.aurorakmpdemo-vpn-bridge.service" "$source_dir/bridge/"
 cp "$WORKSPACE_DIR/composeApp/native-vpn/connman-test-plugin/bridge/com.example.aurorakmpdemo.VpnBridge.conf" "$source_dir/bridge/"
 
+# rpmbuild получает один source archive, поэтому видит KMP-приложение и
+# нативные VPN-файлы как единый payload пакета.
 tar -C "$top_dir/SOURCES" -cjf "$top_dir/SOURCES/$package_name-$package_version.tar.bz2" "$package_name-$package_version"
 cp "$system_rpm_dir/aurora-kmp-demo-system.spec" "$top_dir/SPECS/$package_name.spec"
 
 "$sdk_dir/tools/qmake-aarch64" -query >/dev/null
+# Здесь только создание пакета. Подпись выполняет отдельный доверенный release-
+# процесс, который не должен получать ключ через этот репозиторий.
 docker run -i --rm -h "$(hostname)" \
   $("$sdk_dir/tools/get-user-id-for-docker") \
   -v "$WORKSPACE_DIR":/workspace \

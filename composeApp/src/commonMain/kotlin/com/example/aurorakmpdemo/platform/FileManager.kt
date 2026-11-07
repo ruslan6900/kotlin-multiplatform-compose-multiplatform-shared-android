@@ -1,6 +1,6 @@
 package com.example.aurorakmpdemo.platform
 
-/** A file exposed by the application's own writable storage area. */
+/** Файл из собственной доступной для записи области приложения. */
 data class FileManagerEntry(
     val name: String,
     val path: String,
@@ -14,7 +14,7 @@ expect fun listFileManagerEntries(path: String): List<FileManagerEntry>
 
 expect fun fileManagerParent(path: String): String?
 
-/** Creates a directory below [path] and returns a readable result for the UI. */
+/** Создаёт каталог внутри [path] и возвращает понятный UI результат. */
 expect fun createFileManagerDirectory(path: String, preferredName: String): Result<FileManagerEntry>
 
 expect fun createFileManagerFile(path: String, preferredName: String): Result<FileManagerEntry>

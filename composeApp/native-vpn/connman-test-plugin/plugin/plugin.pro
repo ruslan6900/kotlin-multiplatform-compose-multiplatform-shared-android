@@ -2,12 +2,12 @@ TEMPLATE = lib
 TARGET = aurora-test-route-proto-plugin
 QMAKE_PREFIX_SHLIB =
 
-# ConnMan loads this module and resolves its API symbols itself.  The plugin
-# must therefore export only connman_plugin_desc.
+# ConnMan сам загружает этот модуль и разрешает его API-символы. Поэтому plugin
+# должен экспортировать только connman_plugin_desc.
 CONFIG += plugin hide_symbols link_pkgconfig c99
-# connman.pc carries libtool-only flags (-module/-avoid-version) that this
-# qmake invocation forwards straight to g++. ConnMan symbols are resolved by
-# the daemon when it loads the module, so only its headers are required here.
+# connman.pc содержит флаги только для libtool (-module/-avoid-version), которые
+# этот вызов qmake передаёт прямо в g++. Символы ConnMan разрешает daemon при
+# загрузке модуля, поэтому здесь нужны только его headers.
 PKGCONFIG += glib-2.0 dbus-1
 
 SOURCES += split_tunnel_plugin.c

@@ -1,4 +1,4 @@
-/* Test-only sink for the documentation subnet 198.51.100.0/24. */
+/* Тестовый приёмник пакетов для документационной подсети 198.51.100.0/24. */
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/if_tun.h>
@@ -32,6 +32,7 @@ static void stop(int signal_number)
     running = 0;
 }
 
+/* Открывает TUN-устройство, созданное для этого ConnMan-подключения; маршруты не настраивает. */
 static int open_tunnel(const char *interface_name)
 {
     struct ifreq request;
@@ -51,6 +52,11 @@ static int open_tunnel(const char *interface_name)
     return fd;
 }
 
+/*
+ * Завершает handshake provider с ConnMan. Точное имя метода в нижнем регистре и
+ * payload `s,a{ss}` — часть task ABI ConnMan: после подтверждения callback
+ * notify в plugin переводит подключение в CONNECT/ready.
+ */
 static int notify_configuration(const char *bus_name, const char *interface_name,
                                 const char *object_path)
 {
@@ -77,7 +83,7 @@ static int notify_configuration(const char *bus_name, const char *interface_name
     }
     trace("D-Bus connected destination=%s interface=%s path=%s",
           bus_name, interface_name, object_path);
-    /* Match the ConnMan task protocol expected by the Aurora SDK. */
+    /* Формируем protocol ConnMan task, ожидаемый Aurora SDK. */
     message = dbus_message_new_method_call(bus_name, object_path, interface_name, "notify");
     if (message == NULL) {
         trace("D-Bus Notify message allocation failed");
@@ -112,6 +118,7 @@ static int notify_configuration(const char *bus_name, const char *interface_name
 
 int main(int argc, char **argv)
 {
+    /* ConnMan передаёт все четыре значения при запуске процесса provider. */
     const char *interface_name = NULL;
     const char *dbus_busname = NULL;
     const char *dbus_interface = NULL;

@@ -9,16 +9,29 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
 
-/** Portable contract. Aurora delegates to ConnMan through the system D-Bus. */
+/**
+ * Контракт VPN-экрана, доступный UI.
+ *
+ * Общий Compose-экран знает только эту небольшую машину состояний. На Aurora
+ * реализация просит ограниченный system D-Bus bridge работать с фиксированным
+ * test-профилем; на других платформах используется [SimulatedVpnController]
+ * без побочных эффектов в сети, маршрутах, учётных данных или D-Bus.
+ */
 interface VpnController {
     val connectionState: StateFlow<VpnConnectionState>
     val logs: StateFlow<List<VpnLogEntry>>
 
+    /** Создаёт или переиспользует [profileId] и завершается только после подтверждения адаптера. */
     suspend fun connect(profileId: String): Result<Unit>
+
+    /** Запрашивает отключение и завершается только после подтверждения отключённого состояния. */
     suspend fun disconnect(): Result<Unit>
+
+    /** Очищает журнал экрана в памяти; платформенная диагностика хранится отдельно. */
     fun clearLogs()
 }
 
+/** Состояния, намеренно доступные UI; это не исходные строковые состояния ConnMan. */
 enum class VpnConnectionState(val label: String) {
     Disconnected("Отключено"),
     Connecting("Подключение"),
@@ -37,8 +50,9 @@ data class VpnLogEntry(
 enum class VpnLogLevel { Debug, Info, Warn, Error }
 
 /**
- * Deliberately has no D-Bus, ConnMan, TUN, routing or credential side effects.
- * It exercises the same state-machine boundary that a future platform adapter uses.
+ * Намеренно не имеет побочных эффектов в D-Bus, ConnMan, TUN, маршрутах или
+ * учётных данных. Проверяет ту же границу машины состояний, что и будущий
+ * платформенный адаптер.
  */
 class SimulatedVpnController : VpnController {
     private val operationMutex = Mutex()

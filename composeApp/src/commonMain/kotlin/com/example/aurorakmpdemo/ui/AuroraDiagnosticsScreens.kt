@@ -232,6 +232,8 @@ fun AuroraCompatibilityScreen(onBack: () -> Unit) {
 
 @Composable
 fun AuroraVpnSimulationScreen(onBack: () -> Unit) {
+    // Экран общий: Koin выбирает реальный адаптер Aurora либо безопасную
+    // симуляцию. Сам экран никогда не вызывает system D-Bus напрямую.
     val controller: VpnController = koinInject()
     val connectionState by controller.connectionState.collectAsState()
     val logs by controller.logs.collectAsState()
@@ -248,6 +250,8 @@ fun AuroraVpnSimulationScreen(onBack: () -> Unit) {
         persistedLogSize = logs.size
     }
 
+    // Обработчики кнопок остаются короткими: состояние controller управляет UI,
+    // а подробные этапы bridge/ConnMan отображаются в журнале ниже.
     fun launchOperation(name: String, operation: suspend () -> Result<Unit>) {
         scope.launch {
             status = "$name…"

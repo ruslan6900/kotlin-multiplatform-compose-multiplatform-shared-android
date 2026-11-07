@@ -2,6 +2,8 @@
 
 Демонстрационный проект Kotlin Multiplatform и Compose Multiplatform для Android, iOS, Desktop и Aurora OS. Это воспроизводимый стенд: он показывает общий код, границы платформ и Aurora-системные интеграции. Проект не является production VPN-клиентом.
 
+Текущий релиз: **0.0.3**.
+
 ## Что есть
 
 - общий Compose UI и Compose Navigation;

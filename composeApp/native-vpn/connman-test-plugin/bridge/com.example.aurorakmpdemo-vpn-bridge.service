@@ -1,8 +1,10 @@
 [Unit]
+# Bridge не зависит от UI-процесса и ждёт готовности system D-Bus и ConnMan VPN.
 Description=Aurora KMP demo restricted ConnMan VPN bridge
 After=dbus.service connman-vpn.service
 
 [Service]
+# Type=dbus связывает lifecycle systemd с успешным владением именем D-Bus.
 Type=dbus
 BusName=com.example.aurorakmpdemo.VpnBridge
 ExecStart=/usr/libexec/com.example.aurorakmpdemo-vpn-bridge

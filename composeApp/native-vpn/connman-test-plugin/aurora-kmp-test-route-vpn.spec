@@ -6,8 +6,8 @@ License:        MIT
 BuildArch:      %{_arch}
 Source0:        %{name}-%{version}.tar.bz2
 
-# ConnMan resolves the protocol driver dynamically; it is not a public shared
-# library and must not become an RPM Provides capability.
+# ConnMan динамически находит protocol driver; это не публичная shared library
+# и она не должна становиться RPM Provides capability.
 %global _privatelibs aurora-test-route-proto-plugin
 %global __provides_exclude ^(lib%{_privatelibs})[.]so.*$
 %global __os_install_post %{nil}
@@ -33,7 +33,7 @@ TUN sink; DNS and the default route remain unchanged.
 %install
 rm -rf %{buildroot}
 %qmake5_install
-# ConnMan VPN drivers are conventionally named without the qmake lib-prefix.
+# По соглашению ConnMan VPN driver называется без qmake-префикса lib.
 cp %{buildroot}/usr/lib/connman/plugins-vpn/libaurora-test-route-proto-plugin.so \
    %{buildroot}/usr/lib/connman/plugins-vpn/aurora-test-route-proto-plugin.so
 rm -f %{buildroot}/usr/lib/connman/plugins-vpn/libaurora-test-route-proto-plugin.so

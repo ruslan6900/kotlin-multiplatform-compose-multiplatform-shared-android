@@ -6,9 +6,9 @@ import com.example.aurorakmpdemo.db.SavedNoteEntity
 import kotlin.time.Clock
 
 /**
- * Small repository intentionally backed by a DAO directly.
- * It is a runnable example of a typical dependency direction:
- * Room database -> DAO -> repository -> UI.
+ * Небольшой repository, намеренно работающий с DAO напрямую.
+ * Это запускаемый пример типового направления зависимостей:
+ * База данных Room -> DAO -> repository -> UI.
  */
 class RoomVerificationRepository(
     private val dao: PostsDao,

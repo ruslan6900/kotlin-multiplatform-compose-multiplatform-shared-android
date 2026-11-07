@@ -9,6 +9,8 @@
 #include <QObject>
 
 namespace {
+// Эти идентификаторы должны совпадать с PlatformVpnController.aurora.kt и
+// D-Bus policy, устанавливаемой рядом с этим исполняемым файлом.
 const char *kConnmanService = "net.connman.vpn";
 const char *kManagerInterface = "net.connman.vpn.Manager";
 const char *kConnectionInterface = "net.connman.vpn.Connection";
@@ -24,16 +26,23 @@ QString fail(const QString &value) { return QStringLiteral("error:") + value; }
 }
 
 /**
- * Development-only privileged adapter. It deliberately exposes no arbitrary
- * ConnMan configuration: only one harmless split-tunnel test provider can be
- * created or controlled. A release app should call ConnMan directly from a
- * VPN-permitted Sailjail context instead.
+ * Привилегированный адаптер только для development.
+ *
+ * Это единственный процесс демо, которому разрешено превращать действие UI в
+ * вызов ConnMan system bus. Экспортируемый API намеренно узкий: caller может
+ * создать/переиспользовать один profile, подключить, отключить или прочитать
+ * его состояние. Host, domain, provider type, routes и DNS ниже — константы,
+ * а не входные данные caller. Это не даёт UI без sandbox стать общим VPN manager.
+ *
+ * Production-реализации нужны согласованная D-Bus policy и доверенная
+ * system/extended подпись; этот bridge не заменяет ни то, ни другое.
  */
 class VpnBridge final : public QObject {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "com.example.aurorakmpdemo.VpnBridge")
 
 public slots:
+    /** Создаёт фиксированный ConnMan profile или возвращает его детерминированный путь. */
     QString EnsureTestProfile(const QString &requestedName) {
         if (!isSafeProfileName(requestedName)) {
             return fail(QStringLiteral("invalid-profile-name"));
@@ -49,8 +58,8 @@ public slots:
         QDBusReply<QDBusObjectPath> reply = manager.call(QStringLiteral("Create"), properties);
         if (reply.isValid()) return ok(reply.value().path());
 
-        // ConnMan returns an error for an existing profile. Its object path is
-        // deterministic for this fixed Host/Domain pair, so it is safe to reuse.
+        // ConnMan возвращает ошибку для существующего profile. Его object path
+        // детерминирован для фиксированной пары Host/Domain, поэтому его можно переиспользовать.
         if (reply.error().name().contains(QStringLiteral("AlreadyExists"), Qt::CaseInsensitive) ||
             reply.error().message().contains(QStringLiteral("already"), Qt::CaseInsensitive)) {
             return ok(QString::fromLatin1(kTestPath));
@@ -58,6 +67,7 @@ public slots:
         return fail(QStringLiteral("create:%1:%2").arg(reply.error().name(), reply.error().message()));
     }
 
+    /** Идемпотентный запрос подключения. Фактический успех проверяет TestProfileState. */
     QString ConnectTestProfile() {
         QDBusInterface connection(kConnmanService, kTestPath, kConnectionInterface, QDBusConnection::systemBus());
         if (!connection.isValid()) return fail(QStringLiteral("test-profile-not-found"));
@@ -72,6 +82,7 @@ public slots:
         return ok(QStringLiteral("connect-requested"));
     }
 
+    /** Запрашивает асинхронное отключение ConnMan; Kotlin caller затем опрашивает состояние. */
     QString DisconnectTestProfile() {
         QDBusInterface connection(kConnmanService, kTestPath, kConnectionInterface, QDBusConnection::systemBus());
         if (!connection.isValid()) return fail(QStringLiteral("test-profile-not-found"));
@@ -82,6 +93,7 @@ public slots:
         return ok(QStringLiteral("disconnect-requested"));
     }
 
+    /** Возвращает исходное свойство ConnMan State в протоколе bridge `ok:<state>`. */
     QString TestProfileState() {
         QDBusInterface connection(kConnmanService, kTestPath, kConnectionInterface, QDBusConnection::systemBus());
         if (!connection.isValid()) return fail(QStringLiteral("test-profile-not-found"));
@@ -91,6 +103,7 @@ public slots:
     }
 
 private:
+    /** Не даёт использовать label profile как канал инъекции в привилегированный сервис. */
     static bool isSafeProfileName(const QString &name) {
         return !name.isEmpty() && name.size() <= 64 &&
             QRegularExpression(QStringLiteral("^[A-Za-z0-9._ -]+$")).match(name).hasMatch();
@@ -98,6 +111,8 @@ private:
 };
 
 int main(int argc, char *argv[]) {
+    // systemd запускает процесс. Регистрация имени и объекта открывает методы
+    // только по документированным service/path/interface.
     QCoreApplication app(argc, argv);
     QDBusConnection bus = QDBusConnection::systemBus();
     if (!bus.registerService(QString::fromLatin1(kBridgeService))) return 2;

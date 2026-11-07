@@ -15,11 +15,17 @@ import kotlin.time.Clock
 actual fun createPlatformVpnController(): VpnController = AuroraConnmanVpnController()
 
 /**
- * Real Aurora transport for the deliberately harmless split-tunnel provider.
+ * Реализация [VpnController] для Aurora.
  *
- * A D-Bus method with an empty reply is represented as null by dbus-library,
- * so a successful Connect is never inferred from its return value.  The only
- * success criterion is a subsequent ConnMan State=ready/online observation.
+ * Последовательность вызовов в текущей development-сборке:
+ * `Compose UI -> этот controller -> VpnBridge (system D-Bus) -> ConnMan ->
+ * plugin aurora_test_route -> provider-приёмник пакетов -> vpn0`.
+ *
+ * Bridge владеет привилегированными вызовами ConnMan и принимает только один
+ * фиксированный split-tunnel provider. Благодаря этому видимая Compose-сессия
+ * без sandbox не получает произвольный доступ к system D-Bus. Вызов D-Bus без
+ * возвращаемых аргументов Kotlin-библиотека представляет как `null`, поэтому
+ * успехом считается только последующее подтверждение ConnMan `State=ready`/`online`.
  */
 @OptIn(ExperimentalForeignApi::class)
 private class AuroraConnmanVpnController : VpnController {
@@ -35,6 +41,7 @@ private class AuroraConnmanVpnController : VpnController {
         record(VpnLogLevel.Info, "Safety", "Тестовый provider обслуживает только 198.51.100.0/24; default route и DNS не меняются")
     }
 
+    /** Последовательно обрабатывает нажатия и ждёт ConnMan, а не считает ответ Connect успехом. */
     override suspend fun connect(profileId: String): Result<Unit> = operationMutex.withLock {
         runCatching {
             check(_connectionState.value == VpnConnectionState.Disconnected) {
@@ -54,10 +61,9 @@ private class AuroraConnmanVpnController : VpnController {
             transition(VpnConnectionState.Connected, "ConnectionState")
             return@runCatching
 
-            /* Direct ConnMan path is retained below as the production target.
-             * It is unreachable in the emulator development build because the
-             * temporary root bridge above is used to keep a visible no-sandbox
-             * Compose UI separate from ConnMan's Sailjail policy. */
+            /* Прямой путь к ConnMan сохранён ниже как целевой production-вариант.
+             * В development-сборке emulator он недостижим: временный root bridge
+             * выше отделяет видимый Compose UI без sandbox от Sailjail policy ConnMan. */
             record(VpnLogLevel.Debug, "ConnMan", "Шаг 1/5: читаем net.connman.vpn.Manager.GetConnections")
 
             var connection = findTestConnection(profileId)
@@ -106,6 +112,7 @@ private class AuroraConnmanVpnController : VpnController {
         }
     }
 
+    /** Повторяет принцип [connect]: после ответа bridge ожидается состояние ConnMan. */
     override suspend fun disconnect(): Result<Unit> = operationMutex.withLock {
         runCatching {
             check(_connectionState.value == VpnConnectionState.Connected) {
@@ -207,6 +214,10 @@ private class AuroraConnmanVpnController : VpnController {
     private fun callConnection(path: String, method: String, timeoutMs: Int): Any? =
         DBusClient.call(DBusType.SYSTEM, CONNMAN_SERVICE, path, CONNECTION_INTERFACE, method, timeoutMs)
 
+    /**
+     * Вызывает узкий API bridge. `ok:` — стабильная граница его протокола;
+     * `error:` превращается в видимую в UI ошибку с исходной причиной.
+     */
     private fun bridgeRequired(method: String, args: List<Any?> = emptyList()): String {
         val reply = DBusClient.call(
             DBusType.SYSTEM,
@@ -222,6 +233,7 @@ private class AuroraConnmanVpnController : VpnController {
         return reply
     }
 
+    /** Опрашивает состояние ConnMan через bridge, поскольку Connect/Disconnect асинхронны. */
     private suspend fun waitForBridgeState(expected: Set<String>, timeoutMs: Long): String? {
         val attempts = (timeoutMs / POLL_INTERVAL_MS).toInt().coerceAtLeast(1)
         repeat(attempts) { attempt ->
@@ -266,9 +278,11 @@ private class AuroraConnmanVpnController : VpnController {
         const val MANAGER_PATH = "/"
         const val MANAGER_INTERFACE = "net.connman.vpn.Manager"
         const val CONNECTION_INTERFACE = "net.connman.vpn.Connection"
+        // Эти три значения должны совпадать с D-Bus policy и C++-сервисом bridge.
         const val BRIDGE_SERVICE = "com.example.aurorakmpdemo.VpnBridge"
         const val BRIDGE_PATH = "/com/example/aurorakmpdemo/VpnBridge"
         const val BRIDGE_INTERFACE = "com.example.aurorakmpdemo.VpnBridge"
+        // Type/Host/Domain должны совпадать с нативным plugin и bridge.
         const val TEST_TYPE = "aurora_test_route"
         const val TEST_HOST = "198.51.100.1"
         const val TEST_DOMAIN = "example.test"

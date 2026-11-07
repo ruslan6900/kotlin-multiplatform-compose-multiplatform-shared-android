@@ -14,6 +14,6 @@ spec_file="$project_dir/aurora-kmp-test-route-vpn.spec"
 mkdir -p "$build_dir"
 cd "$build_dir"
 VAR_SPECFILE="$spec_file" "$sdk_dir/tools/qmake-aarch64" ../../connman-test-plugin.pro
-# qmake's incremental timestamp handling inside the SDK container may retain
-# stale C objects. Force the second make pass so every source edit is linked.
+# Инкрементальная обработка временных меток qmake в SDK-контейнере может оставить
+# устаревшие C-объекты. Второй проход make гарантирует линковку каждого изменения.
 "$sdk_dir/tools/make" -B

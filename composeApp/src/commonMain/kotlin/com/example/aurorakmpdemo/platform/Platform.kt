@@ -13,10 +13,10 @@ expect fun platformName(): String
 
 expect fun httpClientEngineFactory(): HttpClientEngineFactory<*>
 
-/** Creates the single platform-configured Room database for the Koin graph. */
+/** Создаёт единственную настроенную для платформы Room БД для графа Koin. */
 expect fun createPostsDatabase(): PostsRoomDatabase
 
-/** Legacy adapter retained for the existing render diagnostic screen. */
+/** Устаревший адаптер, оставленный для существующего экрана диагностики рендера. */
 expect fun createPostsStorage(): PostsStorage
 
 expect fun shouldUseAuroraRenderSmokeTest(): Boolean
@@ -29,7 +29,7 @@ expect fun diagnosticLogPath(): String?
 
 expect fun appendPlatformDiagnosticLog(message: String)
 
-/** A single overwritten file containing only the latest "Library checks" run. */
+/** Единственный перезаписываемый файл, содержащий только последний запуск «Проверки библиотек». */
 expect fun libraryChecksLogPath(): String?
 
 expect fun overwriteLibraryChecksLog(message: String)

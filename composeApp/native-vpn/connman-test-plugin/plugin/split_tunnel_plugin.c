@@ -1,7 +1,7 @@
 /*
- * Deliberately constrained ConnMan VPN driver for emulator verification.
- * It creates a TUN-backed session and only advertises 198.51.100.0/24.
- * It does not set a default route or a DNS server and has no remote endpoint.
+ * Намеренно ограниченный ConnMan VPN driver для проверки в emulator.
+ * Он создаёт сессию на базе TUN и объявляет только 198.51.100.0/24.
+ * Он не задаёт default route, DNS server и не имеет удалённого endpoint.
  */
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 
@@ -21,9 +21,9 @@
 #include <connman/vpn/vpn-provider.h>
 
 /*
- * The ConnMan shim identifies a driver by the descriptor name created by
- * CONNMAN_PLUGIN_DEFINE.  Keep this D-Bus type byte-for-byte identical to
- * that descriptor; hyphens here used to leave the shim without handler_data.
+ * ConnMan shim идентифицирует driver по имени descriptor, созданного через
+ * CONNMAN_PLUGIN_DEFINE. Этот D-Bus type должен посимвольно совпадать с
+ * descriptor: дефисы здесь оставляли shim без handler_data.
  */
 #define DRIVER_NAME "aurora_test_route"
 #define PROVIDER_PATH "/usr/bin/com.example.aurorakmpdemo.test-route-vpn"
@@ -41,9 +41,9 @@ struct test_session {
 static DBusConnection *connection;
 
 /*
- * Aurora's VPN ABI completes a connection through this callback.  The
- * provider process emits net.connman.Task.Notify("configuration", ...),
- * and ConnMan advances the session after we acknowledge that notification.
+ * VPN ABI Aurora завершает подключение через этот callback. Процесс provider
+ * отправляет net.connman.Task.Notify("configuration", ...), а ConnMan переводит
+ * сессию дальше после подтверждения этого уведомления.
  */
 static int test_route_notify(DBusMessage *message, struct vpn_provider *provider)
 {
@@ -119,7 +119,7 @@ static int test_route_connect(struct vpn_provider *provider,
         return -EIO;
     }
 
-    /* Let the provider report readiness through ConnMan's required task ABI. */
+    /* Даём provider сообщить о готовности через обязательный task ABI ConnMan. */
     error = connman_task_add_argument(task, "--dbus-busname",
                                       dbus_bus_get_unique_name(connection));
     connman_info("aurora-test-route: argument dbus-busname result=%d", error);
@@ -130,7 +130,7 @@ static int test_route_connect(struct vpn_provider *provider,
     connman_info("aurora-test-route: argument dbus-path=%s result=%d",
                  connman_task_get_path(task), error);
 
-    /* ConnMan creates the TUN device; the provider keeps it open and drains it. */
+    /* ConnMan создаёт TUN-устройство; provider держит его открытым и читает кадры. */
     error = connman_task_add_argument(task, "--interface", if_name);
     connman_info("aurora-test-route: argument interface=%s result=%d", if_name, error);
     error = connman_task_add_argument(task, "--network", TEST_NETWORK "/24");
@@ -152,7 +152,7 @@ static int test_route_connect(struct vpn_provider *provider,
     connman_info("aurora-test-route: handed IPv4 configuration to ConnMan result=%d", error);
     connman_ipaddress_free(ipaddress);
 
-    /* No default route and no nameserver are ever supplied by this driver. */
+    /* Этот driver никогда не передаёт default route и nameserver. */
     error = vpn_provider_set_boolean(provider, "SplitRouting", true, false);
     connman_info("aurora-test-route: SplitRouting=true (boolean) result=%d", error);
     error = vpn_provider_append_route(provider, "route_network_1", TEST_NETWORK);
@@ -206,12 +206,12 @@ static int test_route_error_code(struct vpn_provider *provider, int exit_code)
 }
 
 /*
- * ConnMan's Aurora shim asks every TUN-based provider for its interface
- * flags before it builds the per-connection task.  Leaving this callback
- * empty makes the shim create no handler context; a subsequent Connect then
- * aborts connman-vpnd instead of returning a normal connection error.
+ * Aurora shim ConnMan запрашивает у каждого TUN-based provider флаги интерфейса
+ * до создания task для подключения. Отсутствие callback не создаёт context
+ * handler; следующий Connect аварийно завершает connman-vpnd вместо обычной
+ * ошибки подключения.
  *
- * This follows the ConnMan VPN-provider contract used by the Aurora SDK sample.
+ * Это соответствует контракту ConnMan VPN-provider из Aurora SDK sample.
  */
 static int test_route_device_flags(struct vpn_provider *provider)
 {
