@@ -41,6 +41,10 @@ auroraBuild {
             add("UserDirs")
             if (includeSystemVpnPayload) add("VPN")
         })
+        extraFiles {
+            from { arch -> projectDir.resolve("build/native-interop/${arch.key}/libaurora-interop-probe.so") } into
+                "/usr/share/com.example.aurorakmpdemo/lib/libaurora-interop-probe.so" mode "0755"
+        }
         if (includeSystemVpnPayload) {
             // Test VPN намеренно работает только как split-tunnel: он обслуживает
             // 198.51.100.0/24, не меняет default route и DNS, а provider
@@ -109,6 +113,21 @@ val nativeVpnDirectory = projectDir.resolve("native-vpn/connman-test-plugin")
 val auroraSdkDirectory = file("${System.getProperty("user.home")}/AuroraOS/sdk/5.2.0.180")
 val systemVpnRpmDirectory = projectDir.resolve("system-rpm")
 
+// Компиляция C ABI-библиотеки выполняется в контейнере Aurora SDK для нужной архитектуры.
+listOf("aarch64" to "aarch64-meego-linux-gnu-gcc", "x86_64" to "x86_64-meego-linux-gnu-gcc").forEach { (arch, compiler) ->
+    tasks.register<Exec>("buildInteropProbe_$arch") {
+        group = "Aurora Interop"
+        val sources = projectDir.resolve("native-interop")
+        val output = layout.buildDirectory.file("native-interop/$arch/libaurora-interop-probe.so")
+        inputs.files(sources.resolve("interop_probe.c"), sources.resolve("interop_probe.h"))
+        outputs.file(output)
+        doFirst { output.get().asFile.parentFile.mkdirs() }
+        commandLine("docker", "run", "--rm", "-v", "${projectDir.absolutePath}:/work", "-w", "/work",
+            "aurora-build-tools:5.2.1.200", compiler, "-shared", "-fPIC", "-O2",
+            "-o", "/work/build/native-interop/$arch/libaurora-interop-probe.so", "/work/native-interop/interop_probe.c")
+    }
+}
+
 tasks.register<Exec>("buildNativeTestVpnProviderAuroraArm64") {
     group = "Aurora VPN"
     description = "Builds the aarch64 ConnMan split-tunnel test plugin and its packet-sink provider."
@@ -176,6 +195,18 @@ tasks.register<Exec>("killAuroraDemoOnEmulator") {
     )
 }
 
+tasks.register<Exec>("restartDebugOnEmulatorNoSandbox") {
+    group = "Aurora Devices"
+    description = "Перезапускает установленное приложение без сборки и переустановки, с выводом отладочного журнала."
+    notCompatibleWithConfigurationCache("Поддерживает открытую SSH-сессию отладки")
+    // Runtime Manager должен завершить старую debug-сессию до нового запуска.
+    commandLine(
+        "ssh", "-tt", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+        "-p", auroraPort, "-i", auroraSshKey, "$auroraUser@$auroraHost",
+        "if runtime-manager-tool Control getRunningApplications | grep -Fq 'Instance Id:       $auroraAppId'; then runtime-manager-tool Control terminate $auroraAppId || exit 1; sleep 3; fi; exec runtime-manager-tool Control startDebug $auroraAppId --nosandbox --output-to-console$auroraDrawableExperimentFlag",
+    )
+}
+
 tasks.register<Exec>("runDebugOnEmulatorNoSandbox") {
     group = "Aurora Devices"
     description = "Install Debug to Emulator and keep a streaming no-sandbox debug session alive while the app runs."
@@ -230,8 +261,13 @@ tasks.matching { it.name == "installDebugToEmulator" }.configureEach {
 
 tasks.matching { it.name == "buildDebugPackageAuroraArm64" }.configureEach {
     // Packaging plugin копирует composeApp.kexe как есть; после изменения исходников его нужно перелинковать.
-    dependsOn("linkDebugExecutableAuroraArm64", "buildNativeTestVpnProviderAuroraArm64")
+    dependsOn("linkDebugExecutableAuroraArm64", "buildInteropProbe_aarch64")
+    if (includeSystemVpnPayload) dependsOn("buildNativeTestVpnProviderAuroraArm64")
 }
+tasks.matching { it.name in setOf("buildReleasePackageAuroraArm64", "buildTestPackageAuroraArm64") }
+    .configureEach { dependsOn("buildInteropProbe_aarch64") }
+tasks.matching { it.name in setOf("buildDebugPackageAuroraX64", "buildReleasePackageAuroraX64", "buildTestPackageAuroraX64") }
+    .configureEach { dependsOn("buildInteropProbe_x86_64") }
 
 tasks.matching {
     it.name in setOf(
@@ -258,6 +294,10 @@ kotlin {
         linuxArm64("auroraArm64"),
         linuxX64("auroraX64"),
     ).forEach { target ->
+        target.compilations.getByName("main").cinterops.create("interopProbe") {
+            defFile(project.file("src/nativeInterop/cinterop/interop_probe.def"))
+            includeDirs(project.file("native-interop"))
+        }
         target.binaries {
             executable {
                 entryPoint = "com.example.aurorakmpdemo.main"
@@ -271,6 +311,7 @@ kotlin {
                     "Qt5Core",
                     "Qt5Network",
                 )
+                linkerOpts("-ldl")
             }
         }
     }
@@ -307,6 +348,7 @@ kotlin {
                 // KMP D-Bus binding Aurora. Реальный VPN-адаптер находится
                 // только в auroraMain; общий UI сохраняет переносимый API controller.
                 implementation("ru.auroraos.kmp:dbus-library:0.0.1")
+                implementation("ru.auroraos.kmp:ak-keyboard-maliit:0.0.1")
             }
         }
 

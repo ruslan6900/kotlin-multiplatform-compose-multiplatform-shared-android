@@ -1,0 +1,2 @@
+headers = interop_probe.h
+package = com.example.aurorakmpdemo.interop

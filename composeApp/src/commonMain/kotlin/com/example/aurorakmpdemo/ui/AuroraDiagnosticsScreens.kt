@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.aurorakmpdemo.data.Post
 import com.example.aurorakmpdemo.data.KotlinLibraryChecks
+import com.example.aurorakmpdemo.platform.runNativeInteropProbe
 import com.example.aurorakmpdemo.data.LibraryCheckEvent
 import com.example.aurorakmpdemo.data.LibraryChecksRunner
 import com.example.aurorakmpdemo.data.LibraryChecksViewModel
@@ -187,6 +188,42 @@ fun AuroraCompatibilityScreen(onBack: () -> Unit) {
                 }
             }
             AuroraDiagnosticsButton("Прочитать сохранённое") { readPersistedValue() }
+        }
+        AuroraDiagnosticsPanel("Нативная .so: C ABI / Kotlin Interop") {
+            BasicText("Передача значений, строки, массива и указателей в C-библиотеку и проверка результата.", style = diagnosticsMutedStyle())
+            BasicText(status, style = diagnosticsBodyStyle())
+            AuroraDiagnosticsButton("Проверить C Interop", enabled = !isRunning) {
+                isRunning = true
+                runLog = emptyList()
+                UiTrace.beginLibraryChecksLog()
+                UiTrace.appendLibraryChecks("START C Interop: dlopen + C ABI")
+                runCatching { runNativeInteropProbe() }
+                    .onSuccess { results ->
+                        if (results == null) {
+                            status = "C Interop: проверка доступна только на Aurora"
+                            UiTrace.appendLibraryChecks("SKIP $status")
+                        } else {
+                            results.forEach { result ->
+                                val level = if (result.success) "OK" else "ERROR"
+                                val detail = "${result.name}: ${result.detail}"
+                                runLog = runLog + LibraryCheckEvent("C Interop", result.success, detail)
+                                UiTrace.appendLibraryChecks("$level $detail")
+                                UiTrace.log("CInterop", "$level $detail")
+                            }
+                            status = if (results.all { it.success }) "C Interop: проверка успешно завершена (${results.size} операций)"
+                                else "C Interop: есть ошибки (${results.count { !it.success }} из ${results.size})"
+                            UiTrace.appendLibraryChecks("FINISH $status")
+                        }
+                    }
+                    .onFailure { error ->
+                        status = "C Interop: ошибка — ${error.message}"
+                        runLog = runLog + LibraryCheckEvent("C Interop", false, status)
+                        UiTrace.appendLibraryChecks("ERROR $status")
+                        UiTrace.logError("CInterop", error)
+                    }
+                viewModel.recordUiEvent(status)
+                isRunning = false
+            }
         }
         AuroraDiagnosticsPanel("Полная последовательная проверка") {
             BasicText("Операции идут строго одна за другой. Каждый результат сохраняется в журнал ниже и в ui-diagnostics.log.", style = diagnosticsMutedStyle())

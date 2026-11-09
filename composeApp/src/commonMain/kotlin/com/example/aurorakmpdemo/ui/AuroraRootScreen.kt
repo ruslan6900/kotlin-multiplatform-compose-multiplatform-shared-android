@@ -2,6 +2,8 @@ package com.example.aurorakmpdemo.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.example.aurorakmpdemo.ui.theme.DemoColors
 
 private enum class AuroraRootPage(val route: String) {
-    Home("home"), Files("files"), Database("database"), Compatibility("libraries"), Vpn("vpn"), Resources("resources"), Images("images"), Fonts("fonts"),
+    Home("home"), Files("files"), Database("database"), Compatibility("libraries"), Vpn("vpn"), Resources("resources"), Images("images"), Fonts("fonts"), Keyboard("keyboard"),
 }
 
 /** Навигация Aurora, не использующая строковые и drawable-ресурсы Compose. */
@@ -52,13 +54,14 @@ fun AuroraRootScreen() {
         }
         composable(AuroraRootPage.Images.route) { AuroraImagesScreen(onBack = { navController.popBackStack() }) }
         composable(AuroraRootPage.Fonts.route) { AuroraFontsScreen(onBack = { navController.popBackStack() }) }
+        composable(AuroraRootPage.Keyboard.route) { AuroraKeyboardScreen(onBack = ::backToHome) }
     }
 }
 
 @Composable
 private fun AuroraHome(onOpen: (AuroraRootPage) -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().background(DemoColors.normalDemoBackground).padding(24.dp),
+        modifier = Modifier.fillMaxSize().background(DemoColors.normalDemoBackground).verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         BasicText("Aurora KMP Demo", style = TextStyle(DemoColors.textPrimary, fontSize = 30.sp, fontWeight = FontWeight.Bold))
@@ -68,6 +71,7 @@ private fun AuroraHome(onOpen: (AuroraRootPage) -> Unit) {
         AuroraRouteCard("Проверка библиотек", "Koin, Room и стандартный Kotlin API", { onOpen(AuroraRootPage.Compatibility) })
         AuroraRouteCard("VPN-плагин", "ConnMan: тестовый профиль, подключение и подробный журнал", { onOpen(AuroraRootPage.Vpn) })
         AuroraRouteCard("Ресурсы", "Изображения и шрифты из composeResources", { onOpen(AuroraRootPage.Resources) })
+        AuroraRouteCard("Клавиатура", "Большое поле и проверка отступа Maliit", { onOpen(AuroraRootPage.Keyboard) })
     }
 }
 
