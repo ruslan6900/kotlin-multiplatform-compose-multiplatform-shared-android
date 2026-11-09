@@ -1,5 +1,7 @@
 package com.example.aurorakmpdemo.ui
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -24,9 +26,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 
 // На остальных платформах резервное значение отсутствует; используется системный IME inset.
@@ -36,6 +40,8 @@ val LocalAuroraKeyboardHeightPx = staticCompositionLocalOf { 0 }
 fun AuroraKeyboardScreen(onBack: () -> Unit) {
     var text by remember { mutableStateOf("") }
     var usePadding by remember { mutableStateOf(true) }
+    val focusManager = LocalFocusManager.current
+    val backgroundInteraction = remember { MutableInteractionSource() }
     val density = LocalDensity.current
     val imeInsets = WindowInsets.ime
     val imeBottom = imeInsets.getBottom(density)
@@ -52,6 +58,14 @@ fun AuroraKeyboardScreen(onBack: () -> Unit) {
             Modifier.windowInsetsPadding(imeInsets).padding(bottom = with(density) { extraPx.toDp() })
         } else Modifier
         Box(Modifier.fillMaxSize().then(keyboardModifier).padding(16.dp)) {
+            // Отдельный слой под содержимым не перехватывает нажатия на поле и кнопки.
+            Box(Modifier.matchParentSize().clickable(
+                interactionSource = backgroundInteraction,
+                indication = null,
+            ) {
+                UiTrace.log("KeyboardScreen", "Нажатие вне поля: снимаем фокус")
+                focusManager.clearFocus()
+            })
             Column(Modifier.align(Alignment.TopStart), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onBack) { Text("← На главную") }
                 Text("Проверка клавиатуры")
@@ -60,13 +74,14 @@ fun AuroraKeyboardScreen(onBack: () -> Unit) {
                     Text("  Отступ клавиатуры")
                 }
                 Text("IME: $imeBottom px; Maliit: $nativePx px")
-                Text("Откройте клавиатуру и сравните положение поля с отступом и без него.")
+                Text("Нажмите вне поля, чтобы закрыть клавиатуру. Переключите отступ для сравнения.")
             }
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
                 label = { Text("Введите текст") },
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(fieldHeight)
+                    .onFocusChanged { UiTrace.log("KeyboardScreen", "Фокус поля: ${it.isFocused}") }
                     .onGloballyPositioned { coordinates ->
                         UiTrace.log("KeyboardScreen", "Поле: размер=${coordinates.size}, позиция=${coordinates.positionInWindow()}, отступ=$usePadding")
                     },

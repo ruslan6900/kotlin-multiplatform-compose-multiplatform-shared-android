@@ -60,6 +60,7 @@ systemctl enable --now com.example.aurorakmpdemo-vpn-bridge
 8. [Сборка и запуск](docs/readme-chapters/08-run-configurations-and-artifacts.md)
 9. [Ограничения и дальнейшие шаги](docs/readme-chapters/09-migration-guidelines.md)
 10. [Заметка по Aurora 5.2](docs/aurora-5.2-sandbox-ui-and-vpn-investigation.md)
+11. [Нативная `.so` и Kotlin/Native Interop](docs/aurora-native-so-interop.md)
 
 `outputs/` содержит архивные результаты запусков, а не текущие инструкции.
 
