@@ -46,7 +46,7 @@ VPN-экран Compose
 ./gradlew -PbuildVariant=aurora :composeApp:buildSystemVpnBundleAuroraArm64
 ```
 
-Для сборки нужны настроенный Aurora SDK с `qmake-aarch64` и Docker-образы, которые использует проект. Путь к SDK задаётся `-Paurora.sdkDir` или `AURORA_SDK_DIR`; сейчас Gradle по умолчанию использует `~/AuroraOS/sdk/5.2.1.200`. Конкретные образы (`aurora-build-tools:5.2.1.200` и `aurora-build-tools:5.2.0.180`) указаны в задачах и скриптах проекта.
+Для сборки нужны настроенный Aurora SDK с `qmake-aarch64` и Docker-образы, которые использует проект. Путь к SDK задаётся `-Paurora.sdkDir` или `AURORA_SDK_DIR`; сейчас Gradle по умолчанию использует `~/AuroraOS/sdk/5.2.1.200`. Сборка обычного RPM, нативной interop-библиотеки и объединённого системного RPM использует образ `aurora-build-tools:5.2.1.200`; он указан в задачах и скриптах проекта.
 
 Задача зависит от `buildDebugPackageAuroraArm64` и `buildNativeTestVpnProviderAuroraArm64`. Первая собирает Kotlin/Compose приложение и нативную библиотеку interop, обработчик фоновых задач и обычный RPM; скрипт `native/tasks/repack.sh` добавляет в desktop entry разделы `X-Task`. Вторая собирает ConnMan plugin, provider и bridge. Затем `packaging/system-rpm/build-aarch64.sh` проверяет наличие входных файлов, создаёт staging-каталог в `composeApp/build/system-rpm/aarch64`, копирует туда приложение, ресурсы, задачи, VPN-компоненты и QML-диалог с его службой, после чего запускает `rpmbuild` с `aurora-kmp-demo-system.spec`.
 

@@ -6,7 +6,7 @@ if [[ -z "${WORKSPACE_DIR:-}" ]]; then
   exit 2
 fi
 
-sdk_dir="${AURORA_SDK_DIR:-$HOME/AuroraOS/sdk/5.2.0.180}"
+sdk_dir="${AURORA_SDK_DIR:-$HOME/AuroraOS/sdk/5.2.1.200}"
 package_name="com.example.aurorakmpdemo"
 package_version="0.0.4"
 system_rpm_dir="$WORKSPACE_DIR/composeApp/src/auroraMain/packaging/system-rpm"
@@ -66,7 +66,7 @@ docker run -i --rm -h "$(hostname)" \
   $("$sdk_dir/tools/get-user-id-for-docker") \
   -v "$WORKSPACE_DIR":/workspace \
   -w /workspace \
-  aurora-build-tools:5.2.0.180 \
+  aurora-build-tools:5.2.1.200 \
   rpmbuild -bb --target aarch64-meego-linux-gnu \
     --define "_topdir /workspace/composeApp/build/system-rpm/aarch64" \
     /workspace/composeApp/build/system-rpm/aarch64/SPECS/$package_name.spec
