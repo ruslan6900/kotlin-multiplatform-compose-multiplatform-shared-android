@@ -1,6 +1,8 @@
 package com.example.aurorakmpdemo.data
 
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -138,6 +140,44 @@ private class AuroraConnmanVpnController : VpnController {
         }.onFailure { failure ->
             record(VpnLogLevel.Error, "AuroraConnman", "Отключение не подтверждено: ${failure.message ?: failure::class.simpleName}")
             _connectionState.value = VpnConnectionState.Connected
+        }
+    }
+
+    override suspend fun refresh(): Result<Unit> = withContext(Dispatchers.Default) {
+        operationMutex.withLock {
+            runCatching {
+                val reply = DBusClient.call(DBusType.SYSTEM, BRIDGE_SERVICE, BRIDGE_PATH, BRIDGE_INTERFACE,
+                    "TestProfileState", BRIDGE_TIMEOUT_MS) as? String ?: error("VPN bridge не ответил")
+                check(reply.startsWith("ok:")) { reply }
+                val raw = reply.removePrefix("ok:")
+                val mapped = when (raw) {
+                    "ready", "online" -> VpnConnectionState.Connected
+                    "idle", "failure", "missing" -> VpnConnectionState.Disconnected
+                    "disconnect" -> VpnConnectionState.Disconnecting
+                    "association", "configuration", "connect" -> VpnConnectionState.Connecting
+                    else -> VpnConnectionState.Unknown
+                }
+                if (_connectionState.value != mapped) {
+                    _connectionState.value = mapped
+                    record(VpnLogLevel.Info, "ConnMan", "Состояние синхронизировано: $raw → ${mapped.name}")
+                }
+            }.onFailure {
+                if (_connectionState.value != VpnConnectionState.Unknown) {
+                    _connectionState.value = VpnConnectionState.Unknown
+                    record(VpnLogLevel.Warn, "ConnMan", "Не удалось прочитать состояние: ${it.message}")
+                }
+            }
+        }
+    }
+
+    override suspend fun removeProfile(): Result<Unit> = withContext(Dispatchers.Default) {
+        operationMutex.withLock {
+            runCatching {
+                record(VpnLogLevel.Info, "UI", "Запрошено удаление тестового профиля")
+                bridgeRequired("RemoveTestProfile")
+                _connectionState.value = VpnConnectionState.Disconnected
+                record(VpnLogLevel.Info, "VpnBridge", "Удаление тестового профиля подтверждено")
+            }.onFailure { record(VpnLogLevel.Error, "VpnBridge", "Удаление не выполнено: ${it.message}") }
         }
     }
 
@@ -296,7 +336,7 @@ private class AuroraConnmanVpnController : VpnController {
         const val CONNECT_WAIT_MS = 10_000L
         const val MAX_LOG_ENTRIES = 120
         val CONNECTED_STATES = setOf("ready", "online")
-        val DISCONNECTED_STATES = setOf("idle", "disconnect")
-        val FAILURE_STATES = setOf("failure", "disconnect")
+        val DISCONNECTED_STATES = setOf("idle", "missing")
+        val FAILURE_STATES = setOf("failure")
     }
 }

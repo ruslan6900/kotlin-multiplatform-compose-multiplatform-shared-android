@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.example.aurorakmpdemo.ui.theme.DemoColors
 
 private enum class AuroraRootPage(val route: String) {
-    Home("home"), Files("files"), Database("database"), Compatibility("libraries"), Vpn("vpn"), Resources("resources"), Images("images"), Fonts("fonts"), Keyboard("keyboard"),
+    Home("home"), Files("files"), Database("database"), Compatibility("libraries"), Vpn("vpn"), Resources("resources"), Images("images"), Fonts("fonts"), Keyboard("keyboard"), SystemEvents("system-events"),
 }
 
 /** Навигация Aurora, не использующая строковые и drawable-ресурсы Compose. */
@@ -54,6 +54,7 @@ fun AuroraRootScreen() {
         }
         composable(AuroraRootPage.Images.route) { AuroraImagesScreen(onBack = { navController.popBackStack() }) }
         composable(AuroraRootPage.Fonts.route) { AuroraFontsScreen(onBack = { navController.popBackStack() }) }
+        composable(AuroraRootPage.SystemEvents.route) { AuroraSystemEventsScreen(onBack = ::backToHome) }
         composable(AuroraRootPage.Keyboard.route) { AuroraKeyboardScreen(onBack = ::backToHome) }
     }
 }
@@ -71,6 +72,7 @@ private fun AuroraHome(onOpen: (AuroraRootPage) -> Unit) {
         AuroraRouteCard("Проверка библиотек", "Koin, Room и стандартный Kotlin API", { onOpen(AuroraRootPage.Compatibility) })
         AuroraRouteCard("VPN-плагин", "ConnMan: тестовый профиль, подключение и подробный журнал", { onOpen(AuroraRootPage.Vpn) })
         AuroraRouteCard("Ресурсы", "Изображения и шрифты из composeResources", { onOpen(AuroraRootPage.Resources) })
+        AuroraRouteCard("Уведомления и фоновые задачи", "Системные уведомления и планирование", { onOpen(AuroraRootPage.SystemEvents) })
         AuroraRouteCard("Клавиатура", "Большое поле и проверка отступа Maliit", { onOpen(AuroraRootPage.Keyboard) })
     }
 }

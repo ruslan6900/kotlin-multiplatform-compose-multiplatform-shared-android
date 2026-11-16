@@ -27,6 +27,12 @@ interface VpnController {
     /** Запрашивает отключение и завершается только после подтверждения отключённого состояния. */
     suspend fun disconnect(): Result<Unit>
 
+    /** Синхронизирует UI с фактическим состоянием системы. */
+    suspend fun refresh(): Result<Unit> = Result.success(Unit)
+
+    /** Удаляет тестовый профиль. */
+    suspend fun removeProfile(): Result<Unit> = Result.success(Unit)
+
     /** Очищает журнал экрана в памяти; платформенная диагностика хранится отдельно. */
     fun clearLogs()
 }
@@ -38,6 +44,7 @@ enum class VpnConnectionState(val label: String) {
     Connected("Подключено"),
     Disconnecting("Отключение"),
     Error("Ошибка"),
+    Unknown("Неизвестно"),
 }
 
 data class VpnLogEntry(

@@ -6,9 +6,10 @@ composeApp/
   src/androidMain/     Android actual-реализации
   src/iosMain/         iOS actual-реализации
   src/desktopMain/     Desktop actual-реализации
-  src/auroraMain/      Aurora entry point, D-Bus controller, диагностика
-  native-vpn/          test ConnMan plugin, provider и bridge
-  system-rpm/          spec и скрипт объединённого development RPM
+  src/auroraMain/      Aurora entry point, D-Bus, диагностика и платформенные ресурсы
+    native/            C interop, задачи, VPN и системные диалоги
+    packaging/         иконки и скрипты упаковки RPM
+  schemas/             общие схемы Room для всех платформ
   composeResources/    общие ресурсы
 docs/                  актуальная документация
 outputs/               архивные результаты запусков

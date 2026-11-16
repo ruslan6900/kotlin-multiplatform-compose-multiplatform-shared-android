@@ -1,0 +1,48 @@
+#!/bin/sh
+# Development-only: system windowprompt needs privileged D-Bus caller.
+set -u
+mode="${1:-boot}"
+config="${AURORA_VPN_SETTINGS:-/home/defaultuser/.local/share/com.example/aurorakmpdemo/vpn-restart.conf}"
+bootfile="${AURORA_VPN_BOOT_ID_FILE:-/proc/sys/kernel/random/boot_id}"
+marker="${AURORA_VPN_BOOT_MARKER:-/run/aurora-kmp-vpn-dialog.shown}"
+qml="/usr/local/share/aurora-kmp-vpn-dialog/MathVpnWindowPrompt-v2.qml"
+bus="unix:path=/run/user/100000/dbus/user_bus_socket"
+log() { logger -t aurora-kmp-vpn-dialog -- "$*"; printf '%s\n' "$*"; }
+case "$mode" in
+  boot|check)
+    if [ "$mode" = boot ]; then
+        attempts=0
+        while [ ! -r "$config" ] && [ "$attempts" -lt 150 ]; do
+            attempts=$((attempts + 1))
+            sleep 2
+        done
+    fi
+    if [ ! -r "$config" ] || [ ! -r "$bootfile" ]; then log 'Настройки или boot_id недоступны; пропуск'; exit 0; fi
+    enabled=$(sed -n '1p' "$config")
+    previous=$(sed -n '3p' "$config")
+    current=$(cat "$bootfile")
+    if [ "$enabled" != 1 ]; then log 'Автозапуск выключен; пропуск'; exit 0; fi
+    if [ -z "$previous" ] || [ -z "$current" ] || [ "$previous" = "$current" ]; then log 'Новой загрузки нет; пропуск'; exit 0; fi
+    if [ -r "$marker" ] && [ "$(cat "$marker")" = "$current" ]; then log 'Окно уже показано при этой загрузке; пропуск'; exit 0; fi
+    if [ "$mode" = check ]; then log 'Условия новой загрузки выполнены'; exit 0; fi
+    ;;
+  manual) ;;
+  *) log 'Использование: aurora-vpn-dialog [boot|manual|check]'; exit 2 ;;
+esac
+if [ ! -r "$qml" ]; then log 'Файл диалога недоступен'; exit 1; fi
+export DBUS_SESSION_BUS_ADDRESS="$bus"
+while :; do
+    if [ "$mode" = boot ]; then
+        enabled=$(sed -n '1p' "$config" 2>/dev/null || :)
+        if [ "$enabled" != 1 ]; then log 'Автозапуск выключен во время ожидания'; exit 0; fi
+    fi
+    if gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.NameHasOwner org.nemomobile.lipstick 2>/dev/null | grep -q true; then
+        if gdbus call --session --dest com.jolla.windowprompt --object-path /com/jolla/windowprompt --method com.jolla.windowprompt.showStorageDevicePrompt "{'componentName': <'file://$qml'>}"; then
+            if [ "$mode" = boot ]; then printf '%s\n' "$current" > "$marker"; fi
+            log "Запрос системного окна отправлен, mode=$mode"
+            exit 0
+        fi
+    fi
+    if [ "$mode" = manual ]; then log 'Не удалось открыть системное окно'; exit 1; fi
+    sleep 2
+done

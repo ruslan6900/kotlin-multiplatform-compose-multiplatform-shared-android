@@ -6,6 +6,7 @@ local.properties
 *.iml
 DerivedData/
 .DS_Store
+.idea/aurora-active-target.properties
 work/
 outputs/*.log
 outputs/*.png

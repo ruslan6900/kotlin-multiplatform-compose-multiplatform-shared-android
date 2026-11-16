@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     kotlin("multiplatform") version "2.3.20"
     id("org.jetbrains.kotlin.plugin.compose") version "2.3.20"
@@ -6,10 +8,10 @@ plugins {
     id("androidx.room") version "2.8.4"
     id("ru.auroraos.kmp.aurora-build") version "0.0.1"
     id("ru.auroraos.kmp.aurora-devices") version "0.0.1"
-    id("org.jetbrains.compose") version "0.0.5-aurora"
+    id("org.jetbrains.compose") version "0.0.6-aurora"
 }
 
-version = "0.0.3"
+version = "0.0.4"
 
 val auroraNavigationVersion = "9999.0.0-SNAPSHOT"
 // Для установки ConnMan plugin и запроса VPN capability нужен пакет с
@@ -34,7 +36,7 @@ auroraBuild {
         // неподписанный RPM с корректными контрольными суммами; release-подпись
         // выполняется отдельно доверенным процессом после этой задачи.
         sign.set(false)
-        icons.set(projectDir.toPath().resolve("icons"))
+        icons.set(projectDir.toPath().resolve("src/auroraMain/packaging/icons"))
         libs3rdParty.set(listOf("maliit-glib"))
         permissions.set(buildList {
             add("Internet")
@@ -45,18 +47,22 @@ auroraBuild {
             from { arch -> projectDir.resolve("build/native-interop/${arch.key}/libaurora-interop-probe.so") } into
                 "/usr/share/com.example.aurorakmpdemo/lib/libaurora-interop-probe.so" mode "0755"
         }
+        extraFiles {
+            from { arch -> projectDir.resolve("src/auroraMain/native/tasks/build/${arch.key}/aurora-demo-tasks") } into
+                "/usr/bin/com.example.aurorakmpdemo.tasks" mode "0755"
+        }
         if (includeSystemVpnPayload) {
             // Test VPN намеренно работает только как split-tunnel: он обслуживает
             // 198.51.100.0/24, не меняет default route и DNS, а provider
             // отбрасывает кадры. Для этой ветки нужна extended-подпись.
             extraFiles {
-                from { arch -> projectDir.resolve("native-vpn/connman-test-plugin/build/${arch.key}/plugin/libaurora-test-route-proto-plugin.so") } into
+                from { arch -> projectDir.resolve("src/auroraMain/native/vpn/connman-test-plugin/build/${arch.key}/plugin/libaurora-test-route-proto-plugin.so") } into
                     "/usr/lib/connman/plugins-vpn/aurora-test-route-proto-plugin.so" mode "0755"
                 // Путь должен совпадать с PROVIDER_PATH из split_tunnel_plugin.c.
                 // ConnMan сам запускает provider.
-                from { arch -> projectDir.resolve("native-vpn/connman-test-plugin/build/${arch.key}/provider/com.example.aurorakmpdemo.test-route-vpn") } into
+                from { arch -> projectDir.resolve("src/auroraMain/native/vpn/connman-test-plugin/build/${arch.key}/provider/com.example.aurorakmpdemo.test-route-vpn") } into
                     "/usr/bin/com.example.aurorakmpdemo.test-route-vpn" mode "0755"
-                from(projectDir.resolve("native-vpn/connman-test-plugin/provider/aurora-test-route.conf")) into
+                from(projectDir.resolve("src/auroraMain/native/vpn/connman-test-plugin/provider/aurora-test-route.conf")) into
                     "/etc/connman/vpn-plugin/aurora-test-route.conf" mode "0644"
             }
         }
@@ -100,6 +106,34 @@ val auroraDrawableExperimentFlag = auroraDrawableExperiment
     .orEmpty()
 val auroraAppId = "com.example.aurorakmpdemo"
 
+// The manager atomically publishes the selected tab per IDE project. Read it
+// once while configuring this invocation, so switching tabs during the build
+// cannot redirect installation or the subsequent launch to another device.
+tasks.register<Exec>("runDebugOnActiveAuroraDevice") {
+    group = "Aurora Devices"
+    description = "Builds and runs the demo on the tab selected in Aurora Device Manager."
+    notCompatibleWithConfigurationCache("Captures the selected device for each invocation")
+    val targetFile = rootProject.file(".idea/aurora-active-target.properties")
+    val target = Properties()
+    if (targetFile.isFile) targetFile.inputStream().use { target.load(it) }
+    fun required(name: String): String = target.getProperty(name)?.takeIf { it.isNotBlank() }
+        ?: error("Не указан $name выбранного устройства Aurora")
+    val requested = gradle.startParameter.taskNames.any { it.substringAfterLast(':') == name }
+    if (requested) {
+        check(target.getProperty("selected") == "ready") {
+            "Выберите устройство в Aurora Device Manager. Для VM настройте SSH в меню управления устройствами."
+        }
+        environment("AURORA_TARGET_NAME", required("name"))
+        environment("AURORA_TARGET_HOST", required("host"))
+        environment("AURORA_TARGET_PORT", required("port"))
+        environment("AURORA_TARGET_USER", required("user"))
+        environment("AURORA_TARGET_KEY", target.getProperty("key", ""))
+    }
+    dependsOn("buildDebugPackageAuroraArm64")
+    commandLine("python3", rootProject.file("scripts/run_aurora_active_device.py").absolutePath,
+        projectDir.resolve("build/rpm/debug/aarch64/RPMS/aarch64").absolutePath)
+}
+
 tasks.register<Delete>("purgeAuroraMacMetadata") {
     group = "Aurora Devices"
     description = "Delete macOS metadata files that break Aurora RPM packaging."
@@ -109,22 +143,35 @@ tasks.register<Delete>("purgeAuroraMacMetadata") {
 
 // Здесь только исходники. Созданные RPM, Makefile и бинарники находятся в
 // build/ или .rpmbuild/ и не должны попадать в Git как исходный код.
-val nativeVpnDirectory = projectDir.resolve("native-vpn/connman-test-plugin")
-val auroraSdkDirectory = file("${System.getProperty("user.home")}/AuroraOS/sdk/5.2.0.180")
-val systemVpnRpmDirectory = projectDir.resolve("system-rpm")
+val nativeVpnDirectory = projectDir.resolve("src/auroraMain/native/vpn/connman-test-plugin")
+val auroraSdkDirectory = file(
+    providers.gradleProperty("aurora.sdkDir")
+        .orElse(providers.environmentVariable("AURORA_SDK_DIR"))
+        .getOrElse("${System.getProperty("user.home")}/AuroraOS/sdk/5.2.1.200")
+)
+val systemVpnRpmDirectory = projectDir.resolve("src/auroraMain/packaging/system-rpm")
+// GUI-launched Android Studio on macOS may not inherit /usr/local/bin or
+// Homebrew's directory in PATH. Allow an override and otherwise find Docker
+// in its usual installation locations before falling back to PATH.
+val auroraDocker = providers.gradleProperty("aurora.docker")
+    .orElse(providers.environmentVariable("AURORA_DOCKER"))
+    .orNull
+    ?: listOf("/usr/local/bin/docker", "/opt/homebrew/bin/docker", "/Applications/Docker.app/Contents/Resources/bin/docker")
+        .firstOrNull { file(it).canExecute() }
+    ?: "docker"
 
 // Компиляция C ABI-библиотеки выполняется в контейнере Aurora SDK для нужной архитектуры.
 listOf("aarch64" to "aarch64-meego-linux-gnu-gcc", "x86_64" to "x86_64-meego-linux-gnu-gcc").forEach { (arch, compiler) ->
     tasks.register<Exec>("buildInteropProbe_$arch") {
         group = "Aurora Interop"
-        val sources = projectDir.resolve("native-interop")
+        val sources = projectDir.resolve("src/auroraMain/native/interop")
         val output = layout.buildDirectory.file("native-interop/$arch/libaurora-interop-probe.so")
         inputs.files(sources.resolve("interop_probe.c"), sources.resolve("interop_probe.h"))
         outputs.file(output)
         doFirst { output.get().asFile.parentFile.mkdirs() }
-        commandLine("docker", "run", "--rm", "-v", "${projectDir.absolutePath}:/work", "-w", "/work",
+        commandLine(auroraDocker, "run", "--rm", "-v", "${projectDir.absolutePath}:/work", "-w", "/work",
             "aurora-build-tools:5.2.1.200", compiler, "-shared", "-fPIC", "-O2",
-            "-o", "/work/build/native-interop/$arch/libaurora-interop-probe.so", "/work/native-interop/interop_probe.c")
+            "-o", "/work/build/native-interop/$arch/libaurora-interop-probe.so", "/work/src/auroraMain/native/interop/interop_probe.c")
     }
 }
 
@@ -148,9 +195,11 @@ tasks.register<Exec>("buildNativeTestVpnProviderAuroraArm64") {
     doFirst {
         delete(nativeVpnDirectory.resolve("build/aarch64/plugin"))
         delete(nativeVpnDirectory.resolve("build/aarch64/provider"))
+        delete(nativeVpnDirectory.resolve("build/aarch64/bridge"))
         nativeVpnDirectory.resolve("build/aarch64").mkdirs()
     }
     environment("WORKSPACE_DIR", rootProject.projectDir.absolutePath)
+    environment("AURORA_SDK_DIR", auroraSdkDirectory.absolutePath)
     commandLine(
         "bash",
         nativeVpnDirectory.resolve("build-aarch64.sh").absolutePath,
@@ -166,12 +215,14 @@ tasks.register<Exec>("buildSystemVpnBundleAuroraArm64") {
     notCompatibleWithConfigurationCache("Stages KMP and native artifacts, then invokes rpmbuild in the Aurora SDK Docker image.")
     workingDir(systemVpnRpmDirectory)
     inputs.dir(projectDir.resolve("build/rpm/debug/aarch64"))
+    inputs.file(projectDir.resolve("src/auroraMain/native/tasks/build/aarch64/aurora-demo-tasks"))
     inputs.file(nativeVpnDirectory.resolve("build/aarch64/plugin/libaurora-test-route-proto-plugin.so"))
     inputs.file(nativeVpnDirectory.resolve("build/aarch64/provider/com.example.aurorakmpdemo.test-route-vpn"))
     inputs.file(nativeVpnDirectory.resolve("build/aarch64/bridge/com.example.aurorakmpdemo-vpn-bridge"))
+    inputs.dir(projectDir.resolve("src/auroraMain/native/system-dialogs/lipstick-windowprompt"))
     inputs.file(systemVpnRpmDirectory.resolve("aurora-kmp-demo-system.spec"))
     inputs.file(systemVpnRpmDirectory.resolve("build-aarch64.sh"))
-    outputs.file(systemVpnRpmDirectory.resolve(".rpmbuild/aarch64/RPMS/aarch64/com.example.aurorakmpdemo-0.0.3-1.aarch64.rpm"))
+    outputs.file(projectDir.resolve("build/system-rpm/aarch64/RPMS/aarch64/com.example.aurorakmpdemo-0.0.4-1.aarch64.rpm"))
     environment("WORKSPACE_DIR", rootProject.projectDir.absolutePath)
     environment("AURORA_SDK_DIR", auroraSdkDirectory.absolutePath)
     commandLine("bash", systemVpnRpmDirectory.resolve("build-aarch64.sh").absolutePath)
@@ -295,8 +346,8 @@ kotlin {
         linuxX64("auroraX64"),
     ).forEach { target ->
         target.compilations.getByName("main").cinterops.create("interopProbe") {
-            defFile(project.file("src/nativeInterop/cinterop/interop_probe.def"))
-            includeDirs(project.file("native-interop"))
+            defFile(project.file("src/auroraMain/native/cinterop/interop_probe.def"))
+            includeDirs(project.file("src/auroraMain/native/interop"))
         }
         target.binaries {
             executable {
@@ -386,4 +437,26 @@ tasks.matching { it.name == "linkDebugExecutableAuroraX64" }.configureEach {
 
 tasks.matching { it.name == "buildDebugPackageAuroraX64" }.configureEach {
     mustRunAfter("buildDebugPackageAuroraArm64")
+}
+
+
+// Aurora Build 0.0.1 does not expose desktop task sections. Rebuild the staged
+// package with the three RuntimeManager tasks declared before RPM signing.
+listOf("AuroraArm64" to "aarch64", "AuroraX64" to "x86_64").forEach { (target, arch) ->
+    val helper = tasks.register<Exec>("buildTaskHelper$target") {
+        inputs.files(fileTree("src/auroraMain/native/tasks") { exclude("build/**") })
+        outputs.file("src/auroraMain/native/tasks/build/$arch/aurora-demo-tasks")
+        commandLine("bash", "src/auroraMain/native/tasks/build-helper.sh", arch)
+    }
+    tasks.matching { it.name == "buildDebugPackage$target" || it.name == "buildReleasePackage$target" }.configureEach {
+        dependsOn(helper)
+        inputs.files(fileTree("src/auroraMain/native/tasks") { exclude("build/**") })
+        doLast {
+            val mode = if (name.startsWith("buildDebug")) "debug" else "release"
+            val stage = projectDir.resolve("build/rpm/$mode")
+            val process = ProcessBuilder("bash", projectDir.resolve("src/auroraMain/native/tasks/repack.sh").absolutePath, stage.absolutePath, arch, project.version.toString())
+                .inheritIO().start()
+            check(process.waitFor() == 0) { "RuntimeManager task package rebuild failed" }
+        }
+    }
 }

@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.example.aurorakmpdemo.data.Post
 import com.example.aurorakmpdemo.data.KotlinLibraryChecks
 import com.example.aurorakmpdemo.platform.runNativeInteropProbe
+import com.example.aurorakmpdemo.platform.SystemDiagnosticsMonitor
 import com.example.aurorakmpdemo.data.LibraryCheckEvent
 import com.example.aurorakmpdemo.data.LibraryChecksRunner
 import com.example.aurorakmpdemo.data.LibraryChecksViewModel
@@ -145,6 +147,11 @@ fun AuroraCompatibilityScreen(onBack: () -> Unit) {
     var checks by remember { mutableStateOf(KotlinLibraryChecks.run()) }
     var runLog by remember { mutableStateOf<List<LibraryCheckEvent>>(emptyList()) }
     var isRunning by remember { mutableStateOf(false) }
+    val network by SystemDiagnosticsMonitor.network.collectAsState()
+    val networkMonitoring by SystemDiagnosticsMonitor.networkRunning.collectAsState()
+    val systemTime by SystemDiagnosticsMonitor.time.collectAsState()
+    val timeMonitoring by SystemDiagnosticsMonitor.timeRunning.collectAsState()
+    val systemEvents by SystemDiagnosticsMonitor.events.collectAsState()
 
     fun readPersistedValue() {
         scope.launch {
@@ -161,7 +168,11 @@ fun AuroraCompatibilityScreen(onBack: () -> Unit) {
         }
     }
 
-    LaunchedEffect(Unit) { readPersistedValue() }
+    LaunchedEffect(Unit) {
+        readPersistedValue()
+        SystemDiagnosticsMonitor.startNetwork()
+        SystemDiagnosticsMonitor.startTime()
+    }
     AuroraDiagnosticsLayout("Проверка библиотек", onBack) {
         AuroraDiagnosticsPanel("Граф зависимостей") {
             BasicText("Koin: ${if (AuroraFriendlyKoin.isStarted()) "запущен" else "не запущен"}", style = diagnosticsBodyStyle())
@@ -251,6 +262,34 @@ fun AuroraCompatibilityScreen(onBack: () -> Unit) {
                 }
             }
         }
+        AuroraDiagnosticsPanel("Проверка сети") {
+            AuroraDiagnosticsButton("Проверить сеть сейчас") { SystemDiagnosticsMonitor.checkNetworkNow() }
+            BasicText("Сейчас: ${network.label}", style = diagnosticsBodyStyle())
+            BasicText("Состояние: ${network.systemState}; тип: ${network.transport}", style = diagnosticsMutedStyle())
+            network.technologies.forEach { BasicText(it, style = diagnosticsMutedStyle()) }
+            if (network.detail.isNotBlank()) BasicText(network.detail, style = diagnosticsMutedStyle())
+            BasicText(if (networkMonitoring) "Наблюдение включено" else "Наблюдение остановлено", style = diagnosticsMutedStyle())
+            AuroraDiagnosticsButton(if (networkMonitoring) "Остановить наблюдение за сетью" else "Начать наблюдение за сетью") {
+                if (networkMonitoring) SystemDiagnosticsMonitor.stopNetwork() else SystemDiagnosticsMonitor.startNetwork()
+            }
+        }
+        AuroraDiagnosticsPanel("Системное время") {
+            BasicText("Текущее время: ${systemTime.display}", style = diagnosticsBodyStyle())
+            BasicText("Часовой пояс: ${systemTime.zone}", style = diagnosticsMutedStyle())
+            BasicText("Относительно начала наблюдения: ${systemTime.referenceStatus}", style = diagnosticsMutedStyle())
+            BasicText("Последнее событие: ${systemTime.lastEvent}", style = diagnosticsBodyStyle())
+            BasicText("Изменений: ${systemTime.eventCount}; минутных отметок: ${systemTime.minuteTicks}", style = diagnosticsMutedStyle())
+            BasicText(if (timeMonitoring) "Наблюдение включено" else "Наблюдение остановлено", style = diagnosticsMutedStyle())
+            AuroraDiagnosticsButton(if (timeMonitoring) "Остановить наблюдение за временем" else "Начать наблюдение за временем") {
+                if (timeMonitoring) SystemDiagnosticsMonitor.stopTime() else SystemDiagnosticsMonitor.startTime()
+            }
+        }
+        AuroraDiagnosticsPanel("Журнал сети и времени (${systemEvents.size}/60)") {
+            BasicText("Наблюдение продолжается при переходе на другие экраны, пока процесс демо работает и не приостановлен системой. Журнал: ${UiTrace.currentLogPath()}", style = diagnosticsMutedStyle())
+            AuroraDiagnosticsButton("Очистить журнал на экране") { SystemDiagnosticsMonitor.clearEvents() }
+            if (systemEvents.isEmpty()) BasicText("Событий пока нет.", style = diagnosticsMutedStyle())
+            else systemEvents.asReversed().forEach { BasicText(it, style = diagnosticsMutedStyle()) }
+        }
         AuroraDiagnosticsPanel("Журнал операций") {
             if (runLog.isEmpty()) {
                 BasicText("Журнал появится после запуска проверки.", style = diagnosticsMutedStyle())
@@ -275,9 +314,43 @@ fun AuroraVpnSimulationScreen(onBack: () -> Unit) {
     val connectionState by controller.connectionState.collectAsState()
     val logs by controller.logs.collectAsState()
     val scope = rememberCoroutineScope()
+    var restartSettings by remember { mutableStateOf(com.example.aurorakmpdemo.platform.VpnRestartSettings()) }
+    var restartStatus by remember { mutableStateOf("Чтение настройки…") }
     var profileId by remember { mutableStateOf("aurora-kmp-test-profile") }
+    LaunchedEffect(Unit) {
+        com.example.aurorakmpdemo.platform.readVpnRestartSettings().fold(
+            onSuccess = { restartSettings = it; profileId = it.profileId; restartStatus = if (it.enabled) "Включено: ${it.profileId}" else "Выключено" },
+            onFailure = { restartStatus = "Ошибка чтения: ${it.message}"; UiTrace.logError("VpnRestart", it) },
+        )
+    }
+    fun configureRestart(enabled: Boolean) {
+        val profile = profileId.trim()
+        if (!com.example.aurorakmpdemo.platform.isTestVpnProfileValid(profile)) {
+            restartStatus = "Недопустимое имя профиля"
+            return
+        }
+        val boot = if (enabled && !restartSettings.enabled) {
+            com.example.aurorakmpdemo.platform.currentVpnBootId().getOrElse {
+                restartStatus = "Не удалось определить загрузку ОС: ${it.message}"
+                UiTrace.logError("VpnRestart", it)
+                return
+            }
+        } else restartSettings.handledBootId
+        val next = restartSettings.copy(enabled = enabled, profileId = profile, handledBootId = boot)
+        com.example.aurorakmpdemo.platform.saveVpnRestartSettings(next).fold(
+            onSuccess = { restartSettings = next; restartStatus = if (enabled) "Включено: $profile" else "Выключено"; UiTrace.log("VpnRestart", "Настройка сохранена enabled=$enabled profile=$profile") },
+            onFailure = { restartStatus = "Ошибка сохранения: ${it.message}"; UiTrace.logError("VpnRestart", it) },
+        )
+    }
     var status by remember { mutableStateOf("Готово создать и подключить тестовый профиль") }
     var persistedLogSize by remember { mutableStateOf(0) }
+
+    LaunchedEffect(controller) {
+        while (true) {
+            controller.refresh()
+            kotlinx.coroutines.delay(2000)
+        }
+    }
 
     LaunchedEffect(logs) {
         if (logs.size < persistedLogSize) persistedLogSize = 0
@@ -325,9 +398,27 @@ fun AuroraVpnSimulationScreen(onBack: () -> Unit) {
             ) {
                 launchOperation("Отключение") { controller.disconnect() }
             }
+            AuroraDiagnosticsButton(
+                "Удалить тестовый профиль",
+                enabled = connectionState == VpnConnectionState.Disconnected,
+            ) {
+                launchOperation("Удаление профиля") { controller.removeProfile() }
+            }
+            BasicText("Для удаления сначала отключите VPN.", style = diagnosticsMutedStyle())
             AuroraDiagnosticsButton("Очистить журнал") {
                 controller.clearLogs()
                 status = "Журнал очищен"
+            }
+        }
+        AuroraDiagnosticsPanel("VPN после перезагрузки") {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                BasicText("Предлагать включение VPN", style = diagnosticsBodyStyle(), modifier = Modifier.weight(1f))
+                Switch(checked = restartSettings.enabled, onCheckedChange = { configureRestart(it) })
+            }
+            BasicText(restartStatus, style = diagnosticsMutedStyle())
+            BasicText("После перезапуска системный компонент попытается показать окна для тестового VPN. На устройстве разработчика для этого необходим экспериментальный системный сервис.", style = diagnosticsMutedStyle())
+            if (restartSettings.enabled) {
+                AuroraDiagnosticsButton("Сохранить выбранный профиль") { configureRestart(true) }
             }
         }
         AuroraDiagnosticsPanel("Подробный журнал (${logs.size}/120)") {
@@ -490,3 +581,72 @@ private fun AuroraDiagnosticsButton(label: String, enabled: Boolean = true, onCl
 
 private fun diagnosticsBodyStyle() = TextStyle(color = DemoColors.textPrimary, fontSize = 15.sp)
 private fun diagnosticsMutedStyle() = TextStyle(color = DemoColors.textMuted, fontSize = 14.sp)
+
+
+@Composable
+fun AuroraSystemEventsScreen(onBack: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var status by remember { mutableStateOf("Выберите проверку.") }
+    var log by remember { mutableStateOf("Загрузка журнала…") }
+    var now by remember { mutableStateOf(kotlin.time.Clock.System.now()) }
+    fun action(name: String) {
+        scope.launch {
+            status = "Отправка запроса: $name"
+            val result = com.example.aurorakmpdemo.platform.runDemoTaskAction(name)
+            status = result.fold({ it }, { "Ошибка: ${it.message ?: "неизвестная ошибка"}" })
+            UiTrace.log("SystemEvents", status)
+            log = com.example.aurorakmpdemo.platform.readDemoTaskLog()
+        }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            now = kotlin.time.Clock.System.now()
+            log = com.example.aurorakmpdemo.platform.readDemoTaskLog()
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+    val countdown = remember(log, now) {
+        val matching = log.lineSequence().filter { it.contains("id=DemoPeriodicNotification") &&
+            (it.contains("[REQUEST_ACCEPTED]") || it.contains("[TASK_START]")) }.toList()
+        val latest = matching.lastOrNull()
+        if (latest == null || latest.contains("action=stop")) "Остановлено или данных пока нет"
+        else {
+            val at = runCatching { kotlin.time.Instant.parse(latest.substringAfter('[').substringBefore(']')) }.getOrNull()
+            if (at == null) "Время следующего запуска неизвестно"
+            else {
+                val seconds = (900 - (now - at).inWholeSeconds).coerceAtLeast(0)
+                if (seconds == 0L) "Ожидается запуск системой"
+                else "Ориентировочно через ${seconds / 60} мин ${seconds % 60} сек"
+            }
+        }
+    }
+    AuroraDiagnosticsLayout("Уведомления и задачи", onBack) {
+        AuroraDiagnosticsPanel("Уведомление") {
+            AuroraDiagnosticsButton("Отправить сейчас") {
+                scope.launch {
+                    status = com.example.aurorakmpdemo.platform.sendDemoNotification().fold({ it }, { "Ошибка: ${it.message}" })
+                    UiTrace.log("SystemEvents", status)
+                }
+            }
+        }
+        AuroraDiagnosticsPanel("Периодические уведомления") {
+            BasicText(countdown, style = diagnosticsBodyStyle())
+            BasicText("Интервал — 15 минут. Отсчёт приблизительный, по журналу; система может отложить запуск. После перезагрузки включите задачу повторно.", style = diagnosticsMutedStyle())
+            AuroraDiagnosticsButton("Включить уведомления") { action("periodic-notification") }
+            AuroraDiagnosticsButton("Остановить уведомления") { action("stop-periodic-notification") }
+        }
+        AuroraDiagnosticsPanel("Фоновая задача") {
+            BasicText("Одноразовый запуск отдельного процесса; результат появится в журнале.", style = diagnosticsMutedStyle())
+            AuroraDiagnosticsButton("Запустить задачу") { action("worker") }
+        }
+        AuroraDiagnosticsPanel("Периодическая фоновая задача") {
+            BasicText("Каждые 15 минут задача добавляет запись в журнал.", style = diagnosticsMutedStyle())
+            AuroraDiagnosticsButton("Включить задачу") { action("periodic-work") }
+            AuroraDiagnosticsButton("Остановить задачу") { action("stop-periodic-work") }
+        }
+        AuroraDiagnosticsPanel("Состояние") { BasicText(status, style = diagnosticsBodyStyle()) }
+        AuroraDiagnosticsPanel("Журнал: последние 100 строк") {
+            BasicText(log, style = diagnosticsMutedStyle())
+        }
+    }
+}

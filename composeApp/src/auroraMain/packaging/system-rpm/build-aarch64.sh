@@ -8,11 +8,12 @@ fi
 
 sdk_dir="${AURORA_SDK_DIR:-$HOME/AuroraOS/sdk/5.2.0.180}"
 package_name="com.example.aurorakmpdemo"
-package_version="0.0.3"
-system_rpm_dir="$WORKSPACE_DIR/composeApp/system-rpm"
+package_version="0.0.4"
+system_rpm_dir="$WORKSPACE_DIR/composeApp/src/auroraMain/packaging/system-rpm"
 normal_rpm_dir="$WORKSPACE_DIR/composeApp/build/rpm/debug/aarch64"
-native_vpn_dir="$WORKSPACE_DIR/composeApp/native-vpn/connman-test-plugin/build/aarch64"
-top_dir="$system_rpm_dir/.rpmbuild/aarch64"
+native_vpn_dir="$WORKSPACE_DIR/composeApp/src/auroraMain/native/vpn/connman-test-plugin/build/aarch64"
+dialog_dir="$WORKSPACE_DIR/composeApp/src/auroraMain/native/system-dialogs/lipstick-windowprompt"
+top_dir="$WORKSPACE_DIR/composeApp/build/system-rpm/aarch64"
 source_dir="$top_dir/SOURCES/$package_name-$package_version"
 
 # Завершаем работу до упаковки, а не создаём молча RPM без одного из трёх VPN
@@ -20,9 +21,13 @@ source_dir="$top_dir/SOURCES/$package_name-$package_version"
 for required in \
   "$normal_rpm_dir/$package_name" \
   "$normal_rpm_dir/applications/$package_name.desktop" \
+  "$WORKSPACE_DIR/composeApp/src/auroraMain/native/tasks/build/aarch64/aurora-demo-tasks" \
   "$native_vpn_dir/plugin/libaurora-test-route-proto-plugin.so" \
   "$native_vpn_dir/provider/$package_name.test-route-vpn" \
-  "$native_vpn_dir/bridge/com.example.aurorakmpdemo-vpn-bridge"; do
+  "$native_vpn_dir/bridge/com.example.aurorakmpdemo-vpn-bridge" \
+  "$dialog_dir/MathVpnWindowPrompt.qml" \
+  "$dialog_dir/boot/aurora-vpn-dialog" \
+  "$dialog_dir/boot/com.example.aurorakmpdemo-vpn-dialog.service"; do
   [[ -f "$required" ]] || { echo "Required build artifact is absent: $required" >&2; exit 3; }
 done
 
@@ -30,19 +35,24 @@ done
 # каждом запуске и намеренно исключён из контроля версий.
 rm -rf "$top_dir"
 mkdir -p "$top_dir"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS} \
-  "$source_dir/app" "$source_dir/vpn" "$source_dir/bridge"
+  "$source_dir/app" "$source_dir/vpn" "$source_dir/bridge" "$source_dir/dialog"
 
 cp "$normal_rpm_dir/$package_name" "$source_dir/app/"
+cp "$WORKSPACE_DIR/composeApp/src/auroraMain/native/tasks/build/aarch64/aurora-demo-tasks" "$source_dir/app/com.example.aurorakmpdemo.tasks"
 cp -a "$normal_rpm_dir/applications" "$source_dir/app/"
 cp -a "$normal_rpm_dir/icons" "$source_dir/app/"
 cp -a "$normal_rpm_dir/resources" "$source_dir/app/"
 cp -a "$normal_rpm_dir/lib" "$source_dir/app/"
 cp "$native_vpn_dir/plugin/libaurora-test-route-proto-plugin.so" "$source_dir/vpn/aurora-test-route-proto-plugin.so"
 cp "$native_vpn_dir/provider/$package_name.test-route-vpn" "$source_dir/vpn/$package_name.test-route-vpn"
-cp "$WORKSPACE_DIR/composeApp/native-vpn/connman-test-plugin/provider/aurora-test-route.conf" "$source_dir/vpn/"
+cp "$WORKSPACE_DIR/composeApp/src/auroraMain/native/vpn/connman-test-plugin/provider/aurora-test-route.conf" "$source_dir/vpn/"
 cp "$native_vpn_dir/bridge/com.example.aurorakmpdemo-vpn-bridge" "$source_dir/bridge/"
-cp "$WORKSPACE_DIR/composeApp/native-vpn/connman-test-plugin/bridge/com.example.aurorakmpdemo-vpn-bridge.service" "$source_dir/bridge/"
-cp "$WORKSPACE_DIR/composeApp/native-vpn/connman-test-plugin/bridge/com.example.aurorakmpdemo.VpnBridge.conf" "$source_dir/bridge/"
+cp "$WORKSPACE_DIR/composeApp/src/auroraMain/native/vpn/connman-test-plugin/bridge/com.example.aurorakmpdemo-vpn-bridge.service" "$source_dir/bridge/"
+cp "$WORKSPACE_DIR/composeApp/src/auroraMain/native/vpn/connman-test-plugin/bridge/com.example.aurorakmpdemo.VpnBridge.conf" "$source_dir/bridge/"
+
+cp "$dialog_dir/MathVpnWindowPrompt.qml" "$source_dir/dialog/MathVpnWindowPrompt-v2.qml"
+cp "$dialog_dir/boot/aurora-vpn-dialog" "$source_dir/dialog/"
+cp "$dialog_dir/boot/com.example.aurorakmpdemo-vpn-dialog.service" "$source_dir/dialog/"
 
 # rpmbuild получает один source archive, поэтому видит KMP-приложение и
 # нативные VPN-файлы как единый payload пакета.
@@ -58,5 +68,5 @@ docker run -i --rm -h "$(hostname)" \
   -w /workspace \
   aurora-build-tools:5.2.0.180 \
   rpmbuild -bb --target aarch64-meego-linux-gnu \
-    --define "_topdir /workspace/composeApp/system-rpm/.rpmbuild/aarch64" \
-    /workspace/composeApp/system-rpm/.rpmbuild/aarch64/SPECS/$package_name.spec
+    --define "_topdir /workspace/composeApp/build/system-rpm/aarch64" \
+    /workspace/composeApp/build/system-rpm/aarch64/SPECS/$package_name.spec

@@ -1,6 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-version = "0.0.3"
+version = "0.0.4"
 
 plugins {
     kotlin("multiplatform") version "2.3.20"
@@ -67,6 +67,10 @@ kotlin {
             }
         }
 
+        val commonTest by getting {
+            dependencies { implementation(kotlin("test")) }
+        }
+
         val androidMain by getting {
             dependencies {
                 implementation(compose.preview)
@@ -108,8 +112,8 @@ android {
         applicationId = "com.example.aurorakmpdemo"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.0.3"
+        versionCode = 2
+        versionName = "0.0.4"
     }
 
     buildFeatures {

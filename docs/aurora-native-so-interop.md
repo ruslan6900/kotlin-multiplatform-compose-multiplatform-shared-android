@@ -16,9 +16,9 @@
 
 | Файл | Назначение |
 | --- | --- |
-| `composeApp/native-interop/interop_probe.h` | Структура результата, сигнатура C ABI и inline-обёртка динамической загрузки. |
-| `composeApp/native-interop/interop_probe.c` | Реализация экспортируемой функции `aurora_interop_probe` в `.so`. |
-| `composeApp/src/nativeInterop/cinterop/interop_probe.def` | Заголовок и пакет Kotlin, из которых cinterop генерирует биндинги. |
+| `composeApp/src/auroraMain/native/interop/interop_probe.h` | Структура результата, сигнатура C ABI и inline-обёртка динамической загрузки. |
+| `composeApp/src/auroraMain/native/interop/interop_probe.c` | Реализация экспортируемой функции `aurora_interop_probe` в `.so`. |
+| `composeApp/src/auroraMain/native/cinterop/interop_probe.def` | Заголовок и пакет Kotlin, из которых cinterop генерирует биндинги. |
 | `composeApp/build.aurora.gradle.kts` | Сборка `.so`, конфигурация cinterop, подключение `libdl` и упаковка файла в RPM. |
 | `composeApp/src/auroraMain/.../platform/NativeInteropProbe.aurora.kt` | Aurora `actual`: подготовка аргументов, вызов C и проверка результата. |
 | `composeApp/src/commonMain/.../platform/NativeInteropProbe.kt` | Общий `expect` и описание результата отдельной проверки. |
@@ -48,7 +48,7 @@ composeApp/build/native-interop/aarch64/libaurora-interop-probe.so
 
 ## 2. Генерация биндингов cinterop
 
-В `kotlin { ... }` для `auroraArm64` и `auroraX64` создаётся cinterop `interopProbe`. Он читает `.def` и заголовок из `native-interop`; типы и функции становятся доступны Kotlin в пакете `com.example.aurorakmpdemo.interop`. Флаг линковщика `-ldl` нужен обёртке для API динамической загрузки.
+В `kotlin { ... }` для `auroraArm64` и `auroraX64` создаётся cinterop `interopProbe`. Он читает `.def` и заголовок из `native/interop`; типы и функции становятся доступны Kotlin в пакете `com.example.aurorakmpdemo.interop`. Флаг линковщика `-ldl` нужен обёртке для API динамической загрузки.
 
 Заголовок задаёт C-структуру `InteropProbeResult` и inline-функцию `interop_probe_call`. Kotlin вызывает **обёртку**, а не Kotlin-класс из `.so`. Сигнатуры функции, структуры, версия заголовка и бинарника должны совпадать: Kotlin/Native и загрузчик не гарантируют безопасную диагностику произвольного ABI-расхождения.
 

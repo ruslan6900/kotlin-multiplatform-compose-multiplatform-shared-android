@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.example.aurorakmpdemo.platform
 
 import platform.Foundation.NSFileManager

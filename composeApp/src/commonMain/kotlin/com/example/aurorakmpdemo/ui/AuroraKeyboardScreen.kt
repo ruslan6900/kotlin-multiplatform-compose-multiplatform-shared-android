@@ -11,11 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,10 +36,16 @@ import androidx.compose.ui.unit.dp
 // На остальных платформах резервное значение отсутствует; используется системный IME inset.
 val LocalAuroraKeyboardHeightPx = staticCompositionLocalOf { 0 }
 
+private enum class KeyboardPaddingMode(val title: String) {
+    Native("Штатный imePadding"),
+    Custom("Свой отступ Maliit"),
+    None("Без отступа"),
+}
+
 @Composable
 fun AuroraKeyboardScreen(onBack: () -> Unit) {
     var text by remember { mutableStateOf("") }
-    var usePadding by remember { mutableStateOf(true) }
+    var mode by remember { mutableStateOf(KeyboardPaddingMode.Native) }
     val focusManager = LocalFocusManager.current
     val backgroundInteraction = remember { MutableInteractionSource() }
     val density = LocalDensity.current
@@ -47,16 +53,18 @@ fun AuroraKeyboardScreen(onBack: () -> Unit) {
     val imeBottom = imeInsets.getBottom(density)
     val nativePx = LocalAuroraKeyboardHeightPx.current
     val extraPx = (nativePx - imeBottom).coerceAtLeast(0)
-    LaunchedEffect(imeBottom, nativePx, usePadding) {
-        UiTrace.log("KeyboardScreen", "Отступ включён=$usePadding, imePx=$imeBottom, MaliitPx=$nativePx, дополнительныйPx=$extraPx, density=${density.density}")
+    LaunchedEffect(imeBottom, nativePx, mode) {
+        UiTrace.log("KeyboardScreen", "Режим=$mode, imePx=$imeBottom, MaliitPx=$nativePx, дополнительныйPx=$extraPx, density=${density.density}")
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // Сохраняем половину первоначальной высоты экрана при появлении клавиатуры.
         val fieldHeight = maxHeight * 0.5f
-        val keyboardModifier = if (usePadding) {
-            Modifier.windowInsetsPadding(imeInsets).padding(bottom = with(density) { extraPx.toDp() })
-        } else Modifier
+        val keyboardModifier = when (mode) {
+            KeyboardPaddingMode.Native -> Modifier.imePadding()
+            KeyboardPaddingMode.Custom -> Modifier.windowInsetsPadding(imeInsets).padding(bottom = with(density) { extraPx.toDp() })
+            KeyboardPaddingMode.None -> Modifier
+        }
         Box(Modifier.fillMaxSize().then(keyboardModifier).padding(16.dp)) {
             // Отдельный слой под содержимым не перехватывает нажатия на поле и кнопки.
             Box(Modifier.matchParentSize().clickable(
@@ -69,12 +77,11 @@ fun AuroraKeyboardScreen(onBack: () -> Unit) {
             Column(Modifier.align(Alignment.TopStart), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onBack) { Text("← На главную") }
                 Text("Проверка клавиатуры")
-                androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(checked = usePadding, onCheckedChange = { usePadding = it })
-                    Text("  Отступ клавиатуры")
+                Button(onClick = { mode = KeyboardPaddingMode.entries[(mode.ordinal + 1) % KeyboardPaddingMode.entries.size] }) {
+                    Text(mode.title)
                 }
                 Text("IME: $imeBottom px; Maliit: $nativePx px")
-                Text("Нажмите вне поля, чтобы закрыть клавиатуру. Переключите отступ для сравнения.")
+                Text("Нажмите кнопку режима для сравнения. Нажатие вне поля снимает фокус.")
             }
             OutlinedTextField(
                 value = text,
@@ -83,7 +90,7 @@ fun AuroraKeyboardScreen(onBack: () -> Unit) {
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(fieldHeight)
                     .onFocusChanged { UiTrace.log("KeyboardScreen", "Фокус поля: ${it.isFocused}") }
                     .onGloballyPositioned { coordinates ->
-                        UiTrace.log("KeyboardScreen", "Поле: размер=${coordinates.size}, позиция=${coordinates.positionInWindow()}, отступ=$usePadding")
+                        UiTrace.log("KeyboardScreen", "Поле: размер=${coordinates.size}, позиция=${coordinates.positionInWindow()}, режим=$mode")
                     },
             )
         }

@@ -10,15 +10,15 @@
 
 ## Не production без доработки
 
-- unsigned development RPM;
+- development RPM: Gradle собирает его без подписи, тестовый экземпляр подписан отдельно сертификатом SDK;
 - provider, который отбрасывает трафик;
-- `--nosandbox`;
+- `Sandboxing=Disabled` в системном development RPM;
 - отсутствие QML-страницы в системных настройках;
 - XML VectorDrawable как общий Aurora-ресурс.
 
 ## Следующие шаги
 
-1. Настроить доверенную system/extended подпись.
+1. Согласовать допустимый состав системного пакета и доверенный профиль подписи: сам по себе extended не устраняет выявленные ошибки проверки.
 2. Согласовать D-Bus policy и bridge с командой Aurora.
 3. Реализовать настоящий VPN provider и обработку ошибок.
 4. Добавить QML settings plugin при необходимости.

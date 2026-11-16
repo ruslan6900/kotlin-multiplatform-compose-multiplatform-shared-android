@@ -1,4 +1,6 @@
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
 #include <QDBusConnection>
 #include <QDBusError>
 #include <QDBusInterface>
@@ -42,6 +44,17 @@ class VpnBridge final : public QObject {
     Q_CLASSINFO("D-Bus Interface", "com.example.aurorakmpdemo.VpnBridge")
 
 public slots:
+    /** Restores fixed UI metadata after APM sweeps a non-APM development install. */
+    QString EnsureRuntimeManifest() {
+        const QString dir = QStringLiteral("/opt/app/com.example.aurorakmpdemo/current/manifest");
+        const QString source = QStringLiteral("/usr/share/applications/com.example.aurorakmpdemo.desktop");
+        const QString target = dir + QStringLiteral("/com.example.aurorakmpdemo.desktop");
+        if (QFile::exists(target)) return ok(QStringLiteral("manifest-present"));
+        if (!QDir().mkpath(dir)) return fail(QStringLiteral("manifest-directory"));
+        if (!QFile::copy(source, target)) return fail(QStringLiteral("manifest-copy"));
+        return ok(QStringLiteral("manifest-created"));
+    }
+
     /** Создаёт фиксированный ConnMan profile или возвращает его детерминированный путь. */
     QString EnsureTestProfile(const QString &requestedName) {
         if (!isSafeProfileName(requestedName)) {
@@ -98,8 +111,29 @@ public slots:
         QDBusInterface connection(kConnmanService, kTestPath, kConnectionInterface, QDBusConnection::systemBus());
         if (!connection.isValid()) return fail(QStringLiteral("test-profile-not-found"));
         QDBusReply<QVariantMap> reply = connection.call(QStringLiteral("GetProperties"));
-        if (!reply.isValid()) return fail(QStringLiteral("properties:%1:%2").arg(reply.error().name(), reply.error().message()));
+        if (!reply.isValid()) {
+            if (reply.error().name() == QLatin1String("org.freedesktop.DBus.Error.UnknownObject")) return ok(QStringLiteral("missing"));
+            return fail(QStringLiteral("properties:%1:%2").arg(reply.error().name(), reply.error().message()));
+        }
         return ok(reply.value().value(QStringLiteral("State")).toString());
+    }
+
+    QString RemoveTestProfile() {
+        QDBusInterface manager(kConnmanService, "/", kManagerInterface, QDBusConnection::systemBus());
+        if (!manager.isValid()) return fail(QStringLiteral("connman-manager-unavailable"));
+        QDBusInterface connection(kConnmanService, kTestPath, kConnectionInterface, QDBusConnection::systemBus());
+        QDBusReply<QVariantMap> properties = connection.call(QStringLiteral("GetProperties"));
+        if (!properties.isValid()) {
+            if (properties.error().name() == QLatin1String("org.freedesktop.DBus.Error.UnknownObject")) return ok(QStringLiteral("already-missing"));
+            return fail(QStringLiteral("properties:%1:%2").arg(properties.error().name(), properties.error().message()));
+        }
+        const QString state = properties.value().value(QStringLiteral("State")).toString();
+        if (state != QLatin1String("idle") && state != QLatin1String("failure"))
+            return fail(QStringLiteral("disconnect-first:%1").arg(state));
+        const QDBusMessage reply = manager.call(QStringLiteral("Remove"), QVariant::fromValue(QDBusObjectPath(QString::fromLatin1(kTestPath))));
+        if (reply.type() == QDBusMessage::ErrorMessage)
+            return fail(QStringLiteral("remove:%1:%2").arg(reply.errorName(), reply.errorMessage()));
+        return ok(QStringLiteral("removed"));
     }
 
 private:

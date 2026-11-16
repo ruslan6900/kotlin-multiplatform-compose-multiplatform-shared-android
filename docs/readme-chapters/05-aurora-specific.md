@@ -34,62 +34,57 @@ VPN-экран Compose
 | `plugin/split_tunnel_plugin.c` | драйвер ConnMan, TUN и route-конфигурация |
 | `provider/test_route_provider.c` | handshake `notify(configuration)` и безопасный packet sink |
 | `bridge/*.service`, `bridge/*.conf` | lifecycle systemd и D-Bus policy |
-| `system-rpm/*` | упаковка всех частей в один development RPM |
+| `packaging/system-rpm/*` | упаковка всех частей в один development RPM |
 
 Профиль `aurora-kmp-test-profile` использует `aurora_test_route`. При успехе ConnMan возвращает `ready`, появляется `vpn0` с адресом `10.203.0.2/30`, DNS и default route остаются без изменений.
 
-## 1. Как собирается один RPM
+## Как собирается один RPM
 
-Команда сборки:
+Команда из корня проекта:
 
 ```bash
 ./gradlew -PbuildVariant=aurora :composeApp:buildSystemVpnBundleAuroraArm64
 ```
 
-Она запускает следующий конвейер.
+Для сборки нужны настроенный Aurora SDK с `qmake-aarch64` и Docker-образы, которые использует проект. Путь к SDK задаётся `-Paurora.sdkDir` или `AURORA_SDK_DIR`; сейчас Gradle по умолчанию использует `~/AuroraOS/sdk/5.2.1.200`. Конкретные образы (`aurora-build-tools:5.2.1.200` и `aurora-build-tools:5.2.0.180`) указаны в задачах и скриптах проекта.
 
-1. `buildNativeTestVpnProviderAuroraArm64` кросс-собирает plugin, provider и bridge в Aurora SDK.
-2. `buildAuroraArm64` собирает KMP/CMP-приложение для `aarch64`.
-3. `buildSystemVpnBundleAuroraArm64` собирает временное дерево исходников и вызывает `rpmbuild` в контейнере Aurora SDK с custom spec `composeApp/system-rpm/aurora-kmp-demo-system.spec`.
-4. Custom spec кладёт в **один** RPM пользовательское приложение и системные компоненты по их штатным путям.
+Задача зависит от `buildDebugPackageAuroraArm64` и `buildNativeTestVpnProviderAuroraArm64`. Первая собирает Kotlin/Compose приложение и нативную библиотеку interop, обработчик фоновых задач и обычный RPM; скрипт `native/tasks/repack.sh` добавляет в desktop entry разделы `X-Task`. Вторая собирает ConnMan plugin, provider и bridge. Затем `packaging/system-rpm/build-aarch64.sh` проверяет наличие входных файлов, создаёт staging-каталог в `composeApp/build/system-rpm/aarch64`, копирует туда приложение, ресурсы, задачи, VPN-компоненты и QML-диалог с его службой, после чего запускает `rpmbuild` с `aurora-kmp-demo-system.spec`.
 
-В готовый RPM входят:
-
-- приложение и его Compose/Kotlin-зависимости;
-- ConnMan plugin: `/usr/lib/connman/plugins-vpn/aurora-test-route-proto-plugin.so`;
-- test provider: `/usr/bin/com.example.aurorakmpdemo.test-route-vpn`;
-- ограниченный D-Bus bridge, его systemd unit и D-Bus policy;
-- конфигурация test provider для ConnMan.
-
-Артефакт находится по пути:
+В **один основной RPM** входят приложение, иконки и ресурсы, вспомогательный процесс задач, библиотека interop, ConnMan plugin, тестовый provider, bridge и D-Bus policy, конфигурация VPN, QML-диалог, скрипт его запуска и два systemd unit. Отладочные RPM, создаваемые `rpmbuild`, — отдельные артефакты для отладки, а не обязательные дополнительные пакеты приложения. Результат текущей сборки:
 
 ```text
-composeApp/system-rpm/.rpmbuild/aarch64/RPMS/aarch64/com.example.aurorakmpdemo-0.0.3-1.aarch64.rpm
+composeApp/build/system-rpm/aarch64/RPMS/aarch64/com.example.aurorakmpdemo-0.0.4-1.aarch64.rpm
 ```
 
-Такое объединение возможно потому, что custom system spec владеет и пользовательскими, и системными путями. `extraFiles` обычного CMP RPM может включать файлы, но не заменяет system packaging policy и не даёт требуемых полномочий для установки ConnMan plugin на физическое устройство.
+Spec создаёт системные файлы, объявляет VPN-разрешение и для этого экспериментального системного RPM отключает Sailjail. В `%post` он пытается перечитать systemd/D-Bus, включить службы диалога и bridge и перезапустить bridge; ошибки этих команд не делают установку неуспешной, поэтому состояние служб нужно проверять отдельно. При удалении spec пытается отключить обе службы. На повторном старте приложение при необходимости просит bridge восстановить фиксированный manifest, удалённый системным sweeper после закрытия. Это обход для development-установки вне APM, а не подтверждённый способ промышленной поставки.
 
-## 2. Как подписывается RPM
+## Подпись и установка на тестовое устройство
 
-Development RPM намеренно не подписывается. Его допустимо ставить только на отдельный development overlay с bypass validation. Для физического устройства нужен доверенный Aurora **system/extended signing profile**: обычной GPG-подписи или self-signed сертификата недостаточно.
-
-Подпись выполняется **после** сборки в отдельном защищённом окружении, где уже установлены Aurora signing tools и хранится выданная для целевого устройства цепочка сертификатов.
+Gradle и `build-aarch64.sh` **не подписывают** итоговый RPM: сразу после сборки он неподписан. Проверенные на физическом устройстве пакеты 0.0.3-15 и 0.0.4-1 были **подписан отдельной командой** с тестовым сертификатом `regular` и ключом из подготовленного набора Aurora SDK (`~/AuroraOS/package-signing/regular_cert.pem` и `regular_key.pem` в текущем окружении). Например, с доступными инструментами и этими файлами:
 
 ```bash
-customer-sign \
-  --binaries-key /защищённый-путь/binaries-key.pem \
-  --packages-key /защищённый-путь/packages-key.pem \
-  --packages-cert /защищённый-путь/packages-cert-extended.pem \
-  --packages-client-cert /защищённый-путь/packages-cert-client.pem \
-  /путь/к/com.example.aurorakmpdemo-0.0.3-1.aarch64.rpm
-
-ompcert-cli dump /путь/к/com.example.aurorakmpdemo-0.0.3-1.aarch64.rpm
+docker run --rm \
+  -v "$PWD/composeApp/build/system-rpm/aarch64/RPMS/aarch64:/packages" \
+  -v "$HOME/AuroraOS/package-signing:/sign:ro" \
+  --entrypoint sh aurora-build-tools:5.2.1.200 -c \
+  'rpmsign-external sign -k /sign/regular_key.pem -c /sign/regular_cert.pem /packages/com.example.aurorakmpdemo-0.0.4-1.aarch64.rpm'
 ```
 
-`customer-sign` добавляет package и binary signatures, а `ompcert-cli dump` позволяет проверить, что они действительно присутствуют. После успешной проверки RPM можно устанавливать стандартно:
+Подпись модифицирует RPM после сборки; повторная сборка снова создаёт неподписанный файл и требует повторной подписи. Файлы сертификата и ключа находятся вне репозитория и не должны попадать в Git. Путь — пример текущего окружения, в другой установке SDK он может отличаться.
 
-```bash
-pkcon install-local /путь/к/com.example.aurorakmpdemo-0.0.3-1.aarch64.rpm
+**Подпись и разрешённость содержимого — разные проверки.** Подписанный тестовым `regular` сертификатом единый RPM был отклонён штатным APM с `BadPackageContent`: системные пути, VPN, служба и внутренний интерфейс диалога выходят за рамки разрешённого состава. Проверка профилем `extended` также выявила ошибки. Нельзя заключить, что одна только замена сертификата на extended сделает пакет устанавливаемым; допустимый состав и системную интеграцию необходимо согласовать с платформой.
+
+На выделенном тестовом устройстве версии 0.0.3-15 и 0.0.4-1 установлены от root **с разовым отключением RPM-плагина проверки содержимого** при сохранении других плагинов. Это не запуск без подписи и не штатная установка APM:
+
+```sh
+devel-su
+rpm -U --define '__transaction_validation %{nil}' /путь/к/com.example.aurorakmpdemo-0.0.4-1.aarch64.rpm
+rpm -q com.example.aurorakmpdemo
+rpm -V --nodeps com.example.aurorakmpdemo
+systemctl is-active com.example.aurorakmpdemo-vpn-bridge.service
+systemctl is-enabled com.example.aurorakmpdemo-vpn-dialog.service
 ```
 
-Закрытые ключи, пароли и signing profile не должны передаваться в Gradle, храниться в Git, копироваться в каталог проекта или попадать в историю shell. В текущем pipeline `sign.set(false)` относится к обычному CMP RPM; custom system spec только упаковывает файлы и сознательно не обращается к ключам.
+Если ранее установлен отдельный VPN development-пакет с теми же файлами, сначала нужно решить конфликт владения файлами при миграции; простое обновление может быть отклонено. На тестовом устройстве переход выполнялся отдельно с `--replacefiles` и удалением старой записи из RPM-базы без удаления файлов. Не применяйте этот обход как стандартный способ поставки.
+
+На 0.0.4-1 проверены запуск и целостность файлов после установки; на 0.0.3-15 — повторное открытие приложения, ответ `4` через D-Bus и переход тестового VPN в `ready`. Тестовый provider не создаёт защищённый канал. Диалоги используют привилегированный внутренний интерфейс, поэтому наличие подписи само по себе не даёт обычному приложению право показывать их. Подробности: [системные диалоги](../aurora-system-dialogs.md), [уведомления и задачи](../aurora-system-events.md), [сеть и время](../aurora-network-and-time.md).

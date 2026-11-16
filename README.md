@@ -2,7 +2,7 @@
 
 Демонстрационный проект Kotlin Multiplatform и Compose Multiplatform для Android, iOS, Desktop и Aurora OS. Это воспроизводимый стенд: он показывает общий код, границы платформ и Aurora-системные интеграции. Проект не является production VPN-клиентом.
 
-Текущий релиз: **0.0.3**.
+Текущий релиз: **0.0.4**.
 
 ## Что есть
 
@@ -11,6 +11,9 @@
 - Koin, Ktor, coroutines, serialization, datetime и Kotlin stdlib;
 - Room KMP: entity, DAO, миграции, repository, Flow и повторное чтение данных;
 - экраны БД, ресурсов, библиотечных проверок, файлов и VPN;
+- диагностика сети и системного времени;
+- локальные и периодические уведомления, разовые и периодические фоновые задачи;
+- экспериментальные системные диалоги и сценарий VPN после перезагрузки;
 - UI-диагностика Aurora и сохраняемый журнал проверок;
 - test split-tunnel VPN через ConnMan.
 
@@ -21,9 +24,9 @@
 | Общие UI и логика | находятся в `commonMain` |
 | Room, Koin, Ktor и сериализация | проверяются в приложении |
 | RPM для Aurora `aarch64` | собирается |
-| Один development RPM с test VPN | собирается и устанавливается на dev-overlay |
+| Один development RPM с test VPN и системными диалогами | собран и установлен на тестовом устройстве с обходом проверки состава |
 | Test VPN | создаёт профиль, поднимает `vpn0`, не меняет DNS и default route |
-| Подпись для физического устройства | не настроена |
+| Тестовая подпись RPM | подписывается отдельно сертификатом regular из подготовленного SDK-набора |
 | Страница VPN в системных настройках | не реализована |
 | Sandbox-рендер Compose в Aurora 5.2 emulator | требует исправления/подтверждения от команды платформы |
 
@@ -39,14 +42,10 @@ Test VPN обслуживает только `198.51.100.0/24` и намерен
 Объединённый development RPM:
 
 ```text
-composeApp/system-rpm/.rpmbuild/aarch64/RPMS/aarch64/com.example.aurorakmpdemo-0.0.3-1.aarch64.rpm
+composeApp/build/system-rpm/aarch64/RPMS/aarch64/com.example.aurorakmpdemo-0.0.4-1.aarch64.rpm
 ```
 
-После установки на development overlay:
-
-```bash
-systemctl enable --now com.example.aurorakmpdemo-vpn-bridge
-```
+Подпись и установка этого системного development RPM требуют отдельных действий и привилегий; подробности и ограничения приведены в [инструкции по сборке](docs/readme-chapters/05-aurora-specific.md).
 
 ## Документация
 
@@ -61,9 +60,13 @@ systemctl enable --now com.example.aurorakmpdemo-vpn-bridge
 9. [Ограничения и дальнейшие шаги](docs/readme-chapters/09-migration-guidelines.md)
 10. [Заметка по Aurora 5.2](docs/aurora-5.2-sandbox-ui-and-vpn-investigation.md)
 11. [Нативная `.so` и Kotlin/Native Interop](docs/aurora-native-so-interop.md)
+12. [Проверки сети и времени](docs/aurora-network-and-time.md)
+13. [Уведомления и фоновые задачи](docs/aurora-system-events.md)
+14. [Системные диалоги](docs/aurora-system-dialogs.md)
+15. [VPN после перезагрузки](docs/aurora-vpn-after-reboot.md)
 
 `outputs/` содержит архивные результаты запусков, а не текущие инструкции.
 
 ## Подпись и секреты
 
-В репозитории нет сертификатов, закрытых ключей или signing profile. Development RPM не подписывается. Для физического устройства необходим доверенный system/extended signing profile и подпись вне Git-репозитория.
+В репозитории нет сертификатов и закрытых ключей. Сборка создаёт неподписанный RPM; пакет на тестовом устройстве был отдельно подписан сертификатом regular из подготовленного SDK-набора. Подпись не заменяет проверку состава: системный development RPM штатный APM отклонил, а проверка extended также выявила ошибки. Тестовая установка выполнена с разовым обходом проверки состава и отключённым Sailjail. Это не готовая схема промышленной поставки.

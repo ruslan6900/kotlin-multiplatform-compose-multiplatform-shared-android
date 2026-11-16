@@ -1,5 +1,5 @@
 Name:           com.example.aurorakmpdemo
-Version:        0.0.3
+Version:        0.0.4
 Release:        1
 Summary:        Aurora KMP demo with the split-tunnel ConnMan verification plugin
 License:        BSD-3-Clause
@@ -26,7 +26,11 @@ rm -rf %{buildroot}
 # Пути ниже — точки системной интеграции Aurora. Они находятся в одном custom
 # RPM: обычный пользовательский RPM не может безопасно владеть каталогом ConnMan
 # plugin, systemd unit или system D-Bus policy.
+install -D -m 0755 dialog/aurora-vpn-dialog %{buildroot}/usr/local/libexec/aurora-kmp-vpn-dialog
+install -D -m 0644 dialog/MathVpnWindowPrompt-v2.qml %{buildroot}/usr/local/share/aurora-kmp-vpn-dialog/MathVpnWindowPrompt-v2.qml
+install -D -m 0644 dialog/com.example.aurorakmpdemo-vpn-dialog.service %{buildroot}%{_unitdir}/com.example.aurorakmpdemo-vpn-dialog.service
 install -D -m 0755 app/com.example.aurorakmpdemo %{buildroot}%{_bindir}/%{name}
+install -D -m 0755 app/com.example.aurorakmpdemo.tasks %{buildroot}%{_bindir}/%{name}.tasks
 install -D -m 0755 vpn/com.example.aurorakmpdemo.test-route-vpn %{buildroot}%{_bindir}/com.example.aurorakmpdemo.test-route-vpn
 install -D -m 0644 vpn/aurora-test-route-proto-plugin.so %{buildroot}/usr/lib/connman/plugins-vpn/aurora-test-route-proto-plugin.so
 install -D -m 0644 vpn/aurora-test-route.conf %{buildroot}/etc/connman/vpn-plugin/aurora-test-route.conf
@@ -41,14 +45,36 @@ cp -a app/applications/. %{buildroot}%{_datadir}/applications/
 # это объявление при sandbox-запуске; режим emulator без sandbox остаётся только
 # визуальным development-обходом.
 sed -i 's/^Permissions=.*/Permissions=Internet;UserDirs;VPN/' %{buildroot}%{_datadir}/applications/%{name}.desktop
+# Experimental system RPM is not installed by APM, so its manifest is not
+# bind-mounted by Sailjail. This development package runs without the sandbox.
+printf "\n[X-Sailjail]\nSandboxing=Disabled\n" >> %{buildroot}%{_datadir}/applications/%{name}.desktop
 cp -a app/icons/. %{buildroot}%{_datadir}/icons/
 cp -a app/resources %{buildroot}%{_datadir}/%{name}/
 mkdir -p %{buildroot}%{_datadir}/%{name}/lib
 cp -a app/lib/. %{buildroot}%{_datadir}/%{name}/lib/
 
+# Development-only system integration: enable the reboot prompt and bridge.
+%post
+/usr/bin/systemctl daemon-reload >/dev/null 2>&1 || :
+/usr/bin/systemctl enable com.example.aurorakmpdemo-vpn-dialog.service com.example.aurorakmpdemo-vpn-bridge.service >/dev/null 2>&1 || :
+/usr/bin/gdbus call --system --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.ReloadConfig >/dev/null 2>&1 || :
+/usr/bin/systemctl restart com.example.aurorakmpdemo-vpn-bridge.service >/dev/null 2>&1 || :
+
+%preun
+if [ "$1" = 0 ]; then
+  /usr/bin/systemctl disable --now com.example.aurorakmpdemo-vpn-dialog.service com.example.aurorakmpdemo-vpn-bridge.service >/dev/null 2>&1 || :
+fi
+
+%postun
+/usr/bin/systemctl daemon-reload >/dev/null 2>&1 || :
+
 %files
 %defattr(-,root,root,-)
+%attr(0755,root,root) /usr/local/libexec/aurora-kmp-vpn-dialog
+%attr(0644,root,root) /usr/local/share/aurora-kmp-vpn-dialog/MathVpnWindowPrompt-v2.qml
+%attr(0644,root,root) %{_unitdir}/com.example.aurorakmpdemo-vpn-dialog.service
 %attr(0755,root,root) %{_bindir}/%{name}
+%attr(0755,root,root) %{_bindir}/%{name}.tasks
 %attr(0755,root,root) %{_bindir}/com.example.aurorakmpdemo.test-route-vpn
 %attr(0644,root,root) /usr/lib/connman/plugins-vpn/aurora-test-route-proto-plugin.so
 %attr(0644,root,root) /etc/connman/vpn-plugin/aurora-test-route.conf
